@@ -6,7 +6,7 @@
   "properties": {
     "enabled": {
       "type": "boolean",
-      "default": true,
+      "default": false,
       "description": "Enable or disable the stocks ticker plugin"
     },
     "global": {
@@ -19,9 +19,9 @@
           "maximum": 300,
           "description": "Duration in seconds to display the stocks ticker"
         },
-        "update_interval_seconds": {
+        "update_interval": {
           "type": "integer",
-          "default": 60,
+          "default": 600,
           "minimum": 30,
           "maximum": 3600,
           "description": "How often to fetch new stock data (seconds)"
@@ -29,8 +29,8 @@
         "scroll_speed": {
           "type": "number",
           "default": 1,
-          "minimum": 0.5,
-          "maximum": 5,
+          "minimum": 0.1,
+          "maximum": 10,
           "description": "Scrolling speed multiplier"
         },
         "scroll_delay": {
@@ -39,6 +39,11 @@
           "minimum": 0.001,
           "maximum": 0.1,
           "description": "Delay between scroll steps in seconds"
+        },
+        "toggle_chart": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable chart display toggle"
         },
         "dynamic_duration": {
           "type": "boolean",
@@ -58,6 +63,49 @@
           "minimum": 30,
           "maximum": 600,
           "description": "Maximum display duration when dynamic duration is enabled"
+        },
+        "duration_buffer": {
+          "type": "number",
+          "default": 0.1,
+          "minimum": 0.01,
+          "maximum": 1.0,
+          "description": "Duration buffer for dynamic duration calculation"
+        },
+        "scroll_pixels_per_second": {
+          "type": "number",
+          "default": 20.0,
+          "minimum": 5.0,
+          "maximum": 50.0,
+          "description": "Scroll speed in pixels per second"
+        },
+        "scroll_target_fps": {
+          "type": "number",
+          "default": 100.0,
+          "minimum": 30.0,
+          "maximum": 200.0,
+          "description": "Target FPS for scrolling"
+        },
+        "scroll_mode": {
+          "type": "string",
+          "enum": ["one_shot", "continuous"],
+          "default": "one_shot",
+          "description": "Scrolling mode"
+        },
+        "scroll_direction": {
+          "type": "string",
+          "enum": ["left", "right"],
+          "default": "left",
+          "description": "Scroll direction"
+        },
+        "enable_scroll_metrics": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable scroll performance metrics"
+        },
+        "display_format": {
+          "type": "string",
+          "default": "{symbol}: ${price} ({change}%)",
+          "description": "Display format for stock information"
         },
         "toggle_chart": {
           "type": "boolean",
@@ -109,7 +157,7 @@
     "stocks": {
       "type": "object",
       "properties": {
-        "stock_symbols": {
+        "symbols": {
           "type": "array",
           "items": {
             "type": "string",
@@ -118,7 +166,7 @@
           },
           "uniqueItems": true,
           "maxItems": 50,
-          "default": ["AAPL", "GOOGL", "MSFT", "TSLA"],
+          "default": ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"],
           "description": "List of stock symbols to track"
         },
         "show_change": {
