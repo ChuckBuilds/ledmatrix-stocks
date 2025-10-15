@@ -47,38 +47,33 @@ class StocksTickerPlugin(BasePlugin):
         """Initialize the stocks ticker plugin."""
         super().__init__(plugin_id, config, display_manager, cache_manager, plugin_manager)
 
-        # Configuration
-        self.stocks_config = config.get('stocks', {})
-        self.crypto_config = config.get('crypto', {})
-        self.global_config = config.get('global', {})
-
         # Display settings
-        self.display_duration = self.global_config.get('display_duration', 30)
-        self.scroll_speed = self.global_config.get('scroll_speed', 1)
-        self.scroll_delay = self.global_config.get('scroll_delay', 0.01)
-        self.dynamic_duration = self.global_config.get('dynamic_duration', True)
-        self.min_duration = self.global_config.get('min_duration', 30)
-        self.max_duration = self.global_config.get('max_duration', 300)
-        self.toggle_chart = self.global_config.get('toggle_chart', False)
-        self.font_size = self.global_config.get('font_size', 10)
+        self.display_duration = config.get('global_display_duration', 30)
+        self.scroll_speed = config.get('global_scroll_speed', 1)
+        self.scroll_delay = config.get('global_scroll_delay', 0.01)
+        self.dynamic_duration = config.get('global_dynamic_duration', True)
+        self.min_duration = config.get('global_min_duration', 30)
+        self.max_duration = config.get('global_max_duration', 300)
+        self.toggle_chart = config.get('global_toggle_chart', False)
+        self.font_size = config.get('global_font_size', 10)
 
         # Background service configuration
-        self.background_config = self.global_config.get('background_service', {
-            'enabled': True,
-            'request_timeout': 30,
-            'max_retries': 5,
-            'priority': 2
-        })
+        self.background_config = {
+            'enabled': config.get('global_background_service_enabled', True),
+            'request_timeout': config.get('global_background_service_request_timeout', 30),
+            'max_retries': config.get('global_background_service_max_retries', 5),
+            'priority': config.get('global_background_service_priority', 2)
+        }
 
         # Colors for stocks
-        stocks_text_color = tuple(self.stocks_config.get('text_color', [255, 255, 255]))
-        stocks_positive_color = tuple(self.stocks_config.get('positive_color', [0, 255, 0]))
-        stocks_negative_color = tuple(self.stocks_config.get('negative_color', [255, 0, 0]))
+        stocks_text_color = tuple(config.get('stocks_text_color', [255, 255, 255]))
+        stocks_positive_color = tuple(config.get('stocks_positive_color', [0, 255, 0]))
+        stocks_negative_color = tuple(config.get('stocks_negative_color', [255, 0, 0]))
 
         # Colors for crypto
-        crypto_text_color = tuple(self.crypto_config.get('text_color', [255, 215, 0]))
-        crypto_positive_color = tuple(self.crypto_config.get('positive_color', [0, 255, 0]))
-        crypto_negative_color = tuple(self.crypto_config.get('negative_color', [255, 0, 0]))
+        crypto_text_color = tuple(config.get('crypto_text_color', [255, 215, 0]))
+        crypto_positive_color = tuple(config.get('crypto_positive_color', [0, 255, 0]))
+        crypto_negative_color = tuple(config.get('crypto_negative_color', [255, 0, 0]))
 
         # State
         self.stock_data = {}
@@ -93,8 +88,8 @@ class StocksTickerPlugin(BasePlugin):
         self._register_fonts()
 
         # Log configuration
-        stock_symbols = self.stocks_config.get('stock_symbols', [])
-        crypto_symbols = self.crypto_config.get('crypto_symbols', [])
+        stock_symbols = config.get('stocks_symbols', [])
+        crypto_symbols = config.get('crypto_crypto_symbols', [])
 
         self.logger.info("Stocks ticker plugin initialized")
         self.logger.info(f"Stock symbols: {stock_symbols}")
@@ -114,7 +109,7 @@ class StocksTickerPlugin(BasePlugin):
                 element_key=f"{self.plugin_id}.stock_symbol",
                 family="press_start",
                 size_px=self.font_size,
-                color=tuple(self.stocks_config.get('text_color', [255, 255, 255]))
+                color=tuple(config.get('stocks_text_color', [255, 255, 255]))
             )
 
             # Stock price font
@@ -123,7 +118,7 @@ class StocksTickerPlugin(BasePlugin):
                 element_key=f"{self.plugin_id}.stock_price",
                 family="press_start",
                 size_px=self.font_size,
-                color=tuple(self.stocks_config.get('positive_color', [0, 255, 0]))
+                color=tuple(config.get('stocks_positive_color', [0, 255, 0]))
             )
 
             # Stock change font
@@ -132,7 +127,7 @@ class StocksTickerPlugin(BasePlugin):
                 element_key=f"{self.plugin_id}.stock_change",
                 family="press_start",
                 size_px=self.font_size - 2,
-                color=tuple(self.stocks_config.get('text_color', [255, 255, 255]))
+                color=tuple(config.get('stocks_text_color', [255, 255, 255]))
             )
 
             # Crypto symbol font
@@ -141,7 +136,7 @@ class StocksTickerPlugin(BasePlugin):
                 element_key=f"{self.plugin_id}.crypto_symbol",
                 family="press_start",
                 size_px=self.font_size,
-                color=tuple(self.crypto_config.get('text_color', [255, 215, 0]))
+                color=tuple(config.get('crypto_text_color', [255, 215, 0]))
             )
 
             # Crypto price font
@@ -150,7 +145,7 @@ class StocksTickerPlugin(BasePlugin):
                 element_key=f"{self.plugin_id}.crypto_price",
                 family="press_start",
                 size_px=self.font_size,
-                color=tuple(self.crypto_config.get('positive_color', [0, 255, 0]))
+                color=tuple(config.get('crypto_positive_color', [0, 255, 0]))
             )
 
             # Info font (market cap, volume)
@@ -173,11 +168,11 @@ class StocksTickerPlugin(BasePlugin):
 
         try:
             # Update stock data
-            if self.stocks_config.get('stock_symbols'):
+            if config.get('stocks_symbols'):
                 self.stock_data = self._fetch_stock_data()
 
             # Update crypto data
-            if self.crypto_config.get('enabled', True) and self.crypto_config.get('crypto_symbols'):
+            if config.get('crypto_enabled', True) and config.get('crypto_crypto_symbols'):
                 self.crypto_data = self._fetch_crypto_data()
 
             self.last_update = time.time()
@@ -189,7 +184,7 @@ class StocksTickerPlugin(BasePlugin):
     def _fetch_stock_data(self) -> Dict:
         """Fetch stock data for tracked symbols."""
         cache_key = f"stocks_data_{datetime.now().strftime('%Y%m%d%H%M')}"
-        update_interval = self.global_config.get('update_interval_seconds', 60)
+        update_interval = config.get('global_update_interval', 60)
 
         # Check cache first
         cached_data = self.cache_manager.get(cache_key)
@@ -198,7 +193,7 @@ class StocksTickerPlugin(BasePlugin):
             return cached_data
 
         try:
-            stock_symbols = self.stocks_config.get('stock_symbols', [])
+            stock_symbols = config.get('stocks_symbols', [])
             stock_data = {}
 
             # For now, return placeholder data since real stock APIs require API keys
@@ -226,7 +221,7 @@ class StocksTickerPlugin(BasePlugin):
     def _fetch_crypto_data(self) -> Dict:
         """Fetch crypto data for tracked symbols."""
         cache_key = f"crypto_data_{datetime.now().strftime('%Y%m%d%H%M')}"
-        update_interval = self.global_config.get('update_interval_seconds', 60)
+        update_interval = config.get('global_update_interval', 60)
 
         # Check cache first
         cached_data = self.cache_manager.get(cache_key)
@@ -235,7 +230,7 @@ class StocksTickerPlugin(BasePlugin):
             return cached_data
 
         try:
-            crypto_symbols = self.crypto_config.get('crypto_symbols', [])
+            crypto_symbols = config.get('crypto_crypto_symbols', [])
             crypto_data = {}
 
             # For now, return placeholder data since real crypto APIs require API keys
@@ -311,10 +306,10 @@ class StocksTickerPlugin(BasePlugin):
                 price = data.get('price', 0)
                 change = data.get('change', 0)
                 change_str = f"+{change}" if change >= 0 else str(change)
-                change_color = tuple(self.stocks_config.get('positive_color', [0, 255, 0])) if change >= 0 else tuple(self.stocks_config.get('negative_color', [255, 0, 0]))
+                change_color = tuple(config.get('stocks_positive_color', [0, 255, 0])) if change >= 0 else tuple(config.get('stocks_negative_color', [255, 0, 0]))
 
-                draw.text((5, y_offset), f"{symbol}:", fill=tuple(self.stocks_config.get('text_color', [255, 255, 255])))
-                draw.text((50, y_offset), f"${price:.2f}", fill=tuple(self.stocks_config.get('positive_color', [0, 255, 0])))
+                draw.text((5, y_offset), f"{symbol}:", fill=tuple(config.get('stocks_text_color', [255, 255, 255])))
+                draw.text((50, y_offset), f"${price:.2f}", fill=tuple(config.get('stocks_positive_color', [0, 255, 0])))
                 draw.text((100, y_offset), change_str, fill=change_color)
 
                 y_offset += self.font_size + 5
@@ -331,10 +326,10 @@ class StocksTickerPlugin(BasePlugin):
                 price = data.get('price', 0)
                 change = data.get('change', 0)
                 change_str = f"+{change}" if change >= 0 else str(change)
-                change_color = tuple(self.crypto_config.get('positive_color', [0, 255, 0])) if change >= 0 else tuple(self.crypto_config.get('negative_color', [255, 0, 0]))
+                change_color = tuple(config.get('crypto_positive_color', [0, 255, 0])) if change >= 0 else tuple(config.get('crypto_negative_color', [255, 0, 0]))
 
-                draw.text((5, y_offset), f"{symbol}:", fill=tuple(self.crypto_config.get('text_color', [255, 215, 0])))
-                draw.text((50, y_offset), f"${price:.2f}", fill=tuple(self.crypto_config.get('positive_color', [0, 255, 0])))
+                draw.text((5, y_offset), f"{symbol}:", fill=tuple(config.get('crypto_text_color', [255, 215, 0])))
+                draw.text((50, y_offset), f"${price:.2f}", fill=tuple(config.get('crypto_positive_color', [0, 255, 0])))
                 draw.text((100, y_offset), change_str, fill=change_color)
 
                 y_offset += self.font_size + 5
@@ -377,17 +372,17 @@ class StocksTickerPlugin(BasePlugin):
         """Return plugin info for web UI."""
         info = super().get_info()
         info.update({
-            'stock_symbols': self.stocks_config.get('stock_symbols', []),
-            'crypto_symbols': self.crypto_config.get('crypto_symbols', []),
-            'crypto_enabled': self.crypto_config.get('enabled', True),
+            'stock_symbols': config.get('stocks_symbols', []),
+            'crypto_symbols': config.get('crypto_crypto_symbols', []),
+            'crypto_enabled': config.get('crypto_enabled', True),
             'toggle_chart': self.toggle_chart,
             'last_update': self.last_update,
             'display_duration': self.display_duration,
             'scroll_speed': self.scroll_speed,
-            'show_change': self.stocks_config.get('show_change', True),
-            'show_percentage': self.stocks_config.get('show_percentage', True),
-            'show_volume': self.stocks_config.get('show_volume', False),
-            'show_market_cap': self.stocks_config.get('show_market_cap', False)
+            'show_change': config.get('stocks_show_change', True),
+            'show_percentage': config.get('stocks_show_percentage', True),
+            'show_volume': config.get('stocks_show_volume', False),
+            'show_market_cap': config.get('stocks_show_market_cap', False)
         })
         return info
 
