@@ -184,7 +184,10 @@ class StocksTickerPlugin(BasePlugin):
     def _fetch_stock_data(self) -> Dict:
         """Fetch stock data for tracked symbols."""
         cache_key = f"stocks_data_{datetime.now().strftime('%Y%m%d%H%M')}"
-        update_interval = config.get('global_update_interval', 60)
+        try:
+            update_interval = int(config.get('global_update_interval', 60))
+        except (ValueError, TypeError):
+            update_interval = 60
 
         # Check cache first
         cached_data = self.cache_manager.get(cache_key)
@@ -221,7 +224,10 @@ class StocksTickerPlugin(BasePlugin):
     def _fetch_crypto_data(self) -> Dict:
         """Fetch crypto data for tracked symbols."""
         cache_key = f"crypto_data_{datetime.now().strftime('%Y%m%d%H%M')}"
-        update_interval = config.get('global_update_interval', 60)
+        try:
+            update_interval = int(config.get('global_update_interval', 60))
+        except (ValueError, TypeError):
+            update_interval = 60
 
         # Check cache first
         cached_data = self.cache_manager.get(cache_key)
