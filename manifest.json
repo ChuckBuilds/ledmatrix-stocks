@@ -1,6 +1,7 @@
 {
   "id": "stocks",
   "name": "Stocks Ticker",
+  "version": "1.0.2",
   "author": "ChuckBuilds",
   "description": "Displays scrolling stock tickers with prices, changes, and optional charts for stocks and cryptocurrencies",
   "category": "financial",
