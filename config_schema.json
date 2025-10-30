@@ -1,279 +1,249 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Stocks Ticker Plugin Configuration",
-  "description": "Configuration schema for the Stocks Ticker plugin",
   "type": "object",
+  "title": "Stock & Crypto Ticker Plugin Configuration",
+  "description": "Configuration schema for the stock and crypto ticker plugin",
   "properties": {
     "enabled": {
       "type": "boolean",
-      "default": false,
-      "description": "Enable or disable the stocks ticker plugin"
+      "description": "Enable or disable the stock ticker plugin",
+      "default": true
     },
-    "global_display_duration": {
+    "display_duration": {
       "type": "number",
-      "default": 30,
+      "description": "How long to show the ticker (10-300 seconds)",
       "minimum": 10,
       "maximum": 300,
-      "description": "Duration in seconds to display the stocks ticker"
+      "default": 30
     },
-    "global_update_interval": {
-      "type": "integer",
-      "default": 600,
-      "minimum": 30,
-      "maximum": 3600,
-      "description": "How often to fetch new stock data (seconds)"
-    },
-    "global_scroll_speed": {
+    "scroll_speed": {
       "type": "number",
-      "default": 1,
-      "minimum": 0.1,
-      "maximum": 10,
-      "description": "Scrolling speed multiplier"
+      "description": "Scrolling speed multiplier",
+      "minimum": 0.5,
+      "maximum": 5.0,
+      "default": 1.0
     },
-    "global_scroll_delay": {
+    "scroll_delay": {
       "type": "number",
-      "default": 0.01,
+      "description": "Delay between scroll steps in seconds",
       "minimum": 0.001,
       "maximum": 0.1,
-      "description": "Delay between scroll steps in seconds"
+      "default": 0.01
     },
-    "global_toggle_chart": {
+    "enable_scrolling": {
       "type": "boolean",
-      "default": true,
-      "description": "Enable chart display toggle"
+      "description": "Enable or disable scrolling animation",
+      "default": true
     },
-    "global_dynamic_duration": {
+    "dynamic_duration": {
       "type": "boolean",
-      "default": true,
-      "description": "Enable dynamic duration based on content width"
+      "description": "Enable dynamic duration based on content width",
+      "default": true
     },
-    "global_min_duration": {
-      "type": "integer",
-      "default": 30,
+    "min_duration": {
+      "type": "number",
+      "description": "Minimum display duration in seconds",
       "minimum": 10,
       "maximum": 300,
-      "description": "Minimum display duration when dynamic duration is enabled"
+      "default": 30
     },
-    "global_max_duration": {
-      "type": "integer",
-      "default": 300,
+    "max_duration": {
+      "type": "number",
+      "description": "Maximum display duration in seconds",
       "minimum": 30,
       "maximum": 600,
-      "description": "Maximum display duration when dynamic duration is enabled"
+      "default": 300
     },
-    "global_duration_buffer": {
+    "duration_buffer": {
       "type": "number",
-      "default": 0.1,
-      "minimum": 0.01,
+      "description": "Buffer percentage for dynamic duration calculation",
+      "minimum": 0.0,
       "maximum": 1.0,
-      "description": "Duration buffer for dynamic duration calculation"
+      "default": 0.1
     },
-    "global_scroll_pixels_per_second": {
-      "type": "number",
-      "default": 20.0,
-      "minimum": 5.0,
-      "maximum": 50.0,
-      "description": "Scroll speed in pixels per second"
-    },
-    "global_scroll_target_fps": {
-      "type": "number",
-      "default": 100.0,
-      "minimum": 30.0,
-      "maximum": 200.0,
-      "description": "Target FPS for scrolling"
-    },
-    "global_scroll_mode": {
-      "type": "string",
-      "enum": ["one_shot", "continuous"],
-      "default": "one_shot",
-      "description": "Scrolling mode"
-    },
-    "global_scroll_direction": {
-      "type": "string",
-      "enum": ["left", "right"],
-      "default": "left",
-      "description": "Scroll direction"
-    },
-    "global_enable_scroll_metrics": {
+    "toggle_chart": {
       "type": "boolean",
-      "default": false,
-      "description": "Enable scroll performance metrics"
+      "description": "Enable chart display toggle",
+      "default": false
     },
-    "global_display_format": {
-      "type": "string",
-      "default": "{symbol}: ${price} ({change}%)",
-      "description": "Display format for stock information"
-    },
-    "global_toggle_chart_alt": {
-      "type": "boolean",
-      "default": false,
-      "description": "Enable chart display toggle"
-    },
-    "global_font_size": {
-      "type": "integer",
-      "default": 10,
+    "font_size": {
+      "type": "number",
+      "description": "Font size for stock information",
       "minimum": 8,
       "maximum": 16,
-      "description": "Font size for stock information"
+      "default": 10
     },
-    "global_background_service_enabled": {
-      "type": "boolean",
-      "default": true,
-      "description": "Enable background data fetching"
+    "update_interval": {
+      "type": "number",
+      "description": "Data refresh interval in seconds",
+      "minimum": 60,
+      "maximum": 3600,
+      "default": 600
     },
-    "global_background_service_request_timeout": {
-      "type": "integer",
-      "default": 30,
-      "minimum": 10,
-      "maximum": 120,
-      "description": "Request timeout in seconds"
-    },
-    "global_background_service_max_retries": {
-      "type": "integer",
-      "default": 5,
-      "minimum": 1,
-      "maximum": 10,
-      "description": "Maximum number of retries for failed requests"
-    },
-    "global_background_service_priority": {
-      "type": "integer",
-      "default": 2,
-      "minimum": 1,
-      "maximum": 5,
-      "description": "Priority for background requests (1=highest, 5=lowest)"
-    },
-    "stocks_symbols": {
+    "symbols": {
       "type": "array",
+      "description": "List of stock symbols to track",
       "items": {
         "type": "string",
-        "pattern": "^[A-Z]{1,5}$",
-        "description": "Stock symbol (e.g., AAPL, GOOGL)"
+        "pattern": "^[A-Z]{1,5}$"
       },
-      "uniqueItems": true,
-      "maxItems": 50,
-      "default": ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"],
-      "description": "List of stock symbols to track"
+      "default": ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "META"],
+      "maxItems": 20
     },
-    "stocks_show_change": {
+    "crypto": {
+      "type": "object",
+      "description": "Cryptocurrency configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable cryptocurrency tracking",
+          "default": true
+        },
+        "crypto_symbols": {
+          "type": "array",
+          "description": "List of cryptocurrency symbols to track",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,10}$"
+          },
+          "default": ["BTC", "ETH", "ADA", "SOL", "DOT"],
+          "maxItems": 10
+        },
+        "show_change": {
+          "type": "boolean",
+          "description": "Show price change for crypto",
+          "default": true
+        },
+        "show_percentage": {
+          "type": "boolean",
+          "description": "Show percentage change for crypto",
+          "default": true
+        },
+        "text_color": {
+          "type": "array",
+          "description": "Text color for crypto (RGB)",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [255, 215, 0]
+        },
+        "positive_color": {
+          "type": "array",
+          "description": "Positive change color for crypto (RGB)",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [0, 255, 0]
+        },
+        "negative_color": {
+          "type": "array",
+          "description": "Negative change color for crypto (RGB)",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "minItems": 3,
+          "maxItems": 3,
+          "default": [255, 0, 0]
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "show_change": {
       "type": "boolean",
-      "default": true,
-      "description": "Show price change indicators"
+      "description": "Show price change for stocks",
+      "default": true
     },
-    "stocks_show_percentage": {
+    "show_percentage": {
       "type": "boolean",
-      "default": true,
-      "description": "Show percentage change"
+      "description": "Show percentage change for stocks",
+      "default": true
     },
-    "stocks_show_volume": {
+    "show_volume": {
       "type": "boolean",
-      "default": false,
-      "description": "Show trading volume"
+      "description": "Show trading volume",
+      "default": false
     },
-    "stocks_show_market_cap": {
+    "show_market_cap": {
       "type": "boolean",
-      "default": false,
-      "description": "Show market capitalization"
+      "description": "Show market capitalization",
+      "default": false
     },
-    "stocks_text_color": {
+    "text_color": {
       "type": "array",
+      "description": "Default text color (RGB)",
       "items": {
-        "type": "integer",
+        "type": "number",
         "minimum": 0,
         "maximum": 255
       },
       "minItems": 3,
       "maxItems": 3,
-      "default": [255, 255, 255],
-      "description": "RGB color for stock text"
+      "default": [255, 255, 255]
     },
-    "stocks_positive_color": {
+    "positive_color": {
       "type": "array",
+      "description": "Positive change color (RGB)",
       "items": {
-        "type": "integer",
+        "type": "number",
         "minimum": 0,
         "maximum": 255
       },
       "minItems": 3,
       "maxItems": 3,
-      "default": [0, 255, 0],
-      "description": "RGB color for positive changes"
+      "default": [0, 255, 0]
     },
-    "stocks_negative_color": {
+    "negative_color": {
       "type": "array",
+      "description": "Negative change color (RGB)",
       "items": {
-        "type": "integer",
+        "type": "number",
         "minimum": 0,
         "maximum": 255
       },
       "minItems": 3,
       "maxItems": 3,
-      "default": [255, 0, 0],
-      "description": "RGB color for negative changes"
+      "default": [255, 0, 0]
     },
-    "crypto_enabled": {
-      "type": "boolean",
-      "default": true,
-      "description": "Enable cryptocurrency tracking"
-    },
-    "crypto_crypto_symbols": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Z]{3,5}$",
-        "description": "Crypto symbol (e.g., BTC, ETH)"
+    "background_service": {
+      "type": "object",
+      "description": "Background data service configuration",
+      "properties": {
+        "request_timeout": {
+          "type": "number",
+          "description": "Request timeout in seconds",
+          "minimum": 5,
+          "maximum": 120,
+          "default": 30
+        },
+        "max_retries": {
+          "type": "number",
+          "description": "Maximum number of retries",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5
+        },
+        "priority": {
+          "type": "number",
+          "description": "Background service priority",
+          "minimum": 1,
+          "maximum": 5,
+          "default": 2
+        }
       },
-      "uniqueItems": true,
-      "maxItems": 20,
-      "default": ["BTC", "ETH", "ADA"],
-      "description": "List of cryptocurrency symbols to track"
-    },
-    "crypto_show_change": {
-      "type": "boolean",
-      "default": true,
-      "description": "Show price change indicators"
-    },
-    "crypto_show_percentage": {
-      "type": "boolean",
-      "default": true,
-      "description": "Show percentage change"
-    },
-    "crypto_text_color": {
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "minimum": 0,
-        "maximum": 255
-      },
-      "minItems": 3,
-      "maxItems": 3,
-      "default": [255, 215, 0],
-      "description": "RGB color for crypto text"
-    },
-    "crypto_positive_color": {
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "minimum": 0,
-        "maximum": 255
-      },
-      "minItems": 3,
-      "maxItems": 3,
-      "default": [0, 255, 0],
-      "description": "RGB color for positive changes"
-    },
-    "crypto_negative_color": {
-      "type": "array",
-      "items": {
-        "type": "integer",
-        "minimum": 0,
-        "maximum": 255
-      },
-      "minItems": 3,
-      "maxItems": 3,
-      "default": [255, 0, 0],
-      "description": "RGB color for negative changes"
+      "additionalProperties": false
     }
   },
-  "additionalProperties": false,
-  "required": ["enabled"]
+  "required": ["enabled"],
+  "additionalProperties": false
 }

@@ -1,12 +1,10 @@
-# Stocks Ticker Plugin Requirements
+# Stock & Crypto Ticker Plugin Dependencies
+# Core dependencies for API requests and image processing
 
-# Core dependencies (handled by main LEDMatrix)
-# requests - for financial API calls
-# Pillow - for image manipulation
-# numpy - for chart generation (if charts are implemented)
+requests>=2.25.0
+Pillow>=8.0.0
+urllib3>=1.26.0
+numpy>=1.20.0
 
-# These are already included in the main LEDMatrix requirements
-# but listed here for reference:
-# requests>=2.25.0
-# Pillow>=8.0.0
-# numpy>=1.21.0
+# Optional dependencies for enhanced functionality
+# pandas>=1.3.0  # For data analysis (if needed)

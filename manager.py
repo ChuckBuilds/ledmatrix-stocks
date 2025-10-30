@@ -1,393 +1,233 @@
 """
-Stocks Ticker Plugin for LEDMatrix
+Stock & Crypto Ticker Plugin for LEDMatrix (Refactored)
 
-Displays scrolling stock tickers with prices, changes, and optional charts for stocks
-and cryptocurrencies. Shows real-time market data in a continuous ticker format.
-
-Features:
-- Stock and cryptocurrency price tracking
-- Real-time price updates and changes
-- Optional chart display toggle
-- Color-coded positive/negative changes
-- Configurable display options
-- Background data fetching
-
-API Version: 1.0.0
+Displays scrolling stock tickers with prices, changes, and optional charts
+for stocks and cryptocurrencies. This refactored version splits functionality
+into focused modules for better maintainability.
 """
 
-import logging
 import time
-import requests
-import json
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
-from pathlib import Path
+from typing import Dict, Any
 
 from src.plugin_system.base_plugin import BasePlugin
 
-logger = logging.getLogger(__name__)
+# Import our modular components
+from data_fetcher import StockDataFetcher
+from display_renderer import StockDisplayRenderer
+from chart_renderer import StockChartRenderer
+from config_manager import StockConfigManager
 
 
-class StocksTickerPlugin(BasePlugin):
+class StockTickerPlugin(BasePlugin):
     """
-    Stocks ticker plugin for displaying financial market data.
-
-    Supports stocks and cryptocurrencies with real-time price tracking,
-    change indicators, and optional chart display.
-
-    Configuration options:
-        stocks: Stock symbols and display options
-        crypto: Cryptocurrency symbols and display options
-        display_options: Scroll speed, duration, colors
-        background_service: Data fetching configuration
+    Stock and cryptocurrency ticker plugin with scrolling display.
+    
+    This refactored version uses modular components:
+    - StockDataFetcher: Handles API calls and data fetching
+    - StockDisplayRenderer: Handles display creation and layout
+    - StockChartRenderer: Handles chart drawing functionality
+    - StockConfigManager: Handles configuration management
     """
-
-    def __init__(self, plugin_id: str, config: Dict[str, Any],
+    
+    def __init__(self, plugin_id: str, config: Dict[str, Any], 
                  display_manager, cache_manager, plugin_manager):
-        """Initialize the stocks ticker plugin."""
+        """Initialize the stock ticker plugin."""
         super().__init__(plugin_id, config, display_manager, cache_manager, plugin_manager)
-
-        # Display settings
-        self.display_duration = config.get('global_display_duration', 30)
-        self.scroll_speed = config.get('global_scroll_speed', 1)
-        self.scroll_delay = config.get('global_scroll_delay', 0.01)
-        self.dynamic_duration = config.get('global_dynamic_duration', True)
-        self.min_duration = config.get('global_min_duration', 30)
-        self.max_duration = config.get('global_max_duration', 300)
-        self.toggle_chart = config.get('global_toggle_chart', False)
-        self.font_size = config.get('global_font_size', 10)
-
-        # Background service configuration
-        self.background_config = {
-            'enabled': config.get('global_background_service_enabled', True),
-            'request_timeout': config.get('global_background_service_request_timeout', 30),
-            'max_retries': config.get('global_background_service_max_retries', 5),
-            'priority': config.get('global_background_service_priority', 2)
-        }
-
-        # Colors for stocks
-        stocks_text_color = tuple(config.get('stocks_text_color', [255, 255, 255]))
-        stocks_positive_color = tuple(config.get('stocks_positive_color', [0, 255, 0]))
-        stocks_negative_color = tuple(config.get('stocks_negative_color', [255, 0, 0]))
-
-        # Colors for crypto
-        crypto_text_color = tuple(config.get('crypto_text_color', [255, 215, 0]))
-        crypto_positive_color = tuple(config.get('crypto_positive_color', [0, 255, 0]))
-        crypto_negative_color = tuple(config.get('crypto_negative_color', [255, 0, 0]))
-
-        # State
+        
+        # Get display dimensions
+        self.display_width = display_manager.width
+        self.display_height = display_manager.height
+        
+        # Initialize modular components
+        self.config_manager = StockConfigManager(config, self.logger)
+        self.data_fetcher = StockDataFetcher(self.config_manager, self.cache_manager, self.logger)
+        self.display_renderer = StockDisplayRenderer(
+            self.config_manager.plugin_config, 
+            self.display_width, 
+            self.display_height, 
+            self.logger
+        )
+        self.chart_renderer = StockChartRenderer(
+            self.config_manager.plugin_config,
+            self.display_width,
+            self.display_height,
+            self.logger
+        )
+        
+        # Plugin state
         self.stock_data = {}
-        self.crypto_data = {}
         self.current_stock_index = 0
-        self.scroll_position = 0
-        self.last_update = 0
-        self.chart_mode = False
-        self.initialized = True
-
-        # Register fonts
-        self._register_fonts()
-
-        # Log configuration
-        stock_symbols = config.get('stocks_symbols', [])
-        crypto_symbols = config.get('crypto_crypto_symbols', [])
-
-        self.logger.info("Stocks ticker plugin initialized")
-        self.logger.info(f"Stock symbols: {stock_symbols}")
-        self.logger.info(f"Crypto symbols: {crypto_symbols}")
-
-    def _register_fonts(self):
-        """Register fonts with the font manager."""
-        try:
-            if not hasattr(self.plugin_manager, 'font_manager'):
-                return
-
-            font_manager = self.plugin_manager.font_manager
-
-            # Stock symbol font
-            font_manager.register_manager_font(
-                manager_id=self.plugin_id,
-                element_key=f"{self.plugin_id}.stock_symbol",
-                family="press_start",
-                size_px=self.font_size,
-                color=tuple(config.get('stocks_text_color', [255, 255, 255]))
-            )
-
-            # Stock price font
-            font_manager.register_manager_font(
-                manager_id=self.plugin_id,
-                element_key=f"{self.plugin_id}.stock_price",
-                family="press_start",
-                size_px=self.font_size,
-                color=tuple(config.get('stocks_positive_color', [0, 255, 0]))
-            )
-
-            # Stock change font
-            font_manager.register_manager_font(
-                manager_id=self.plugin_id,
-                element_key=f"{self.plugin_id}.stock_change",
-                family="press_start",
-                size_px=self.font_size - 2,
-                color=tuple(config.get('stocks_text_color', [255, 255, 255]))
-            )
-
-            # Crypto symbol font
-            font_manager.register_manager_font(
-                manager_id=self.plugin_id,
-                element_key=f"{self.plugin_id}.crypto_symbol",
-                family="press_start",
-                size_px=self.font_size,
-                color=tuple(config.get('crypto_text_color', [255, 215, 0]))
-            )
-
-            # Crypto price font
-            font_manager.register_manager_font(
-                manager_id=self.plugin_id,
-                element_key=f"{self.plugin_id}.crypto_price",
-                family="press_start",
-                size_px=self.font_size,
-                color=tuple(config.get('crypto_positive_color', [0, 255, 0]))
-            )
-
-            # Info font (market cap, volume)
-            font_manager.register_manager_font(
-                manager_id=self.plugin_id,
-                element_key=f"{self.plugin_id}.info",
-                family="four_by_six",
-                size_px=6,
-                color=(150, 150, 150)
-            )
-
-            self.logger.info("Stocks ticker fonts registered")
-        except Exception as e:
-            self.logger.warning(f"Error registering fonts: {e}")
-
+        self.scroll_complete = False
+        
+        # Expose enable_scrolling for display controller FPS detection
+        self.enable_scrolling = self.config_manager.enable_scrolling
+        self.last_update_time = 0
+        
+        # Initialize scroll helper
+        self.scroll_helper = self.display_renderer.get_scroll_helper()
+        self.scroll_helper.set_scroll_speed(self.config_manager.scroll_speed)
+        
+        self.logger.info("Stock ticker plugin initialized - %dx%d", 
+                        self.display_width, self.display_height)
+    
     def update(self) -> None:
         """Update stock and crypto data."""
-        if not self.initialized:
+        current_time = time.time()
+        
+        # Check if it's time to update
+        if current_time - self.last_update_time >= self.config_manager.update_interval:
+            try:
+                self.logger.debug("Updating stock and crypto data")
+                fetched_data = self.data_fetcher.fetch_all_data()
+                self.stock_data = fetched_data
+                self.last_update_time = current_time
+                
+                # Clear scroll cache when data updates
+                if hasattr(self.scroll_helper, 'cached_image'):
+                    self.scroll_helper.cached_image = None
+                
+                
+            except Exception as e:
+                self.logger.error("Error updating data: %s", e)
+    
+    def display(self, force_clear: bool = False) -> None:
+        """Display stocks with scrolling or static mode."""
+        if not self.stock_data:
+            self.logger.warning("No stock data available, showing error state")
+            self._show_error_state()
             return
-
-        try:
-            # Update stock data
-            if config.get('stocks_symbols'):
-                self.stock_data = self._fetch_stock_data()
-
-            # Update crypto data
-            if config.get('crypto_enabled', True) and config.get('crypto_crypto_symbols'):
-                self.crypto_data = self._fetch_crypto_data()
-
-            self.last_update = time.time()
-            self.logger.debug(f"Updated stock/crypto data")
-
-        except Exception as e:
-            self.logger.error(f"Error updating stock/crypto data: {e}")
-
-    def _fetch_stock_data(self) -> Dict:
-        """Fetch stock data for tracked symbols."""
-        cache_key = f"stocks_data_{datetime.now().strftime('%Y%m%d%H%M')}"
-        update_interval = config.get('global_update_interval', 60)
-
-        # Check cache first
-        cached_data = self.cache_manager.get(cache_key)
-        if cached_data and (time.time() - self.last_update) < update_interval:
-            self.logger.debug("Using cached stock data")
-            return cached_data
-
-        try:
-            stock_symbols = config.get('stocks_symbols', [])
-            stock_data = {}
-
-            # For now, return placeholder data since real stock APIs require API keys
-            # In a real implementation, this would call financial data APIs
-            for symbol in stock_symbols:
-                stock_data[symbol] = {
-                    'symbol': symbol,
-                    'price': round(100 + (hash(symbol) % 200), 2),  # Mock price
-                    'change': round((hash(symbol + 'change') % 20) - 10, 2),  # Mock change
-                    'change_percent': round((hash(symbol + 'percent') % 10) - 5, 2),  # Mock percentage
-                    'volume': (hash(symbol + 'vol') % 1000000) + 100000,  # Mock volume
-                    'market_cap': (hash(symbol + 'cap') % 1000000000000) + 1000000000,  # Mock market cap
-                    'last_updated': datetime.now().isoformat()
-                }
-
-            # Cache the results
-            self.cache_manager.set(cache_key, stock_data, ttl=update_interval * 2)
-
-            return stock_data
-
-        except Exception as e:
-            self.logger.error(f"Error fetching stock data: {e}")
-            return {}
-
-    def _fetch_crypto_data(self) -> Dict:
-        """Fetch crypto data for tracked symbols."""
-        cache_key = f"crypto_data_{datetime.now().strftime('%Y%m%d%H%M')}"
-        update_interval = config.get('global_update_interval', 60)
-
-        # Check cache first
-        cached_data = self.cache_manager.get(cache_key)
-        if cached_data and (time.time() - self.last_update) < update_interval:
-            self.logger.debug("Using cached crypto data")
-            return cached_data
-
-        try:
-            crypto_symbols = config.get('crypto_crypto_symbols', [])
-            crypto_data = {}
-
-            # For now, return placeholder data since real crypto APIs require API keys
-            # In a real implementation, this would call cryptocurrency APIs
-            for symbol in crypto_symbols:
-                crypto_data[symbol] = {
-                    'symbol': symbol,
-                    'price': round(1000 + (hash(symbol) % 50000), 2),  # Mock price
-                    'change': round((hash(symbol + 'change') % 1000) - 500, 2),  # Mock change
-                    'change_percent': round((hash(symbol + 'percent') % 20) - 10, 2),  # Mock percentage
-                    'volume': (hash(symbol + 'vol') % 100000000) + 1000000,  # Mock volume
-                    'market_cap': (hash(symbol + 'cap') % 1000000000000) + 100000000000,  # Mock market cap
-                    'last_updated': datetime.now().isoformat()
-                }
-
-            # Cache the results
-            self.cache_manager.set(cache_key, crypto_data, ttl=update_interval * 2)
-
-            return crypto_data
-
-        except Exception as e:
-            self.logger.error(f"Error fetching crypto data: {e}")
-            return {}
-
-    def display(self, display_mode: str = None, force_clear: bool = False) -> None:
-        """
-        Display scrolling stocks ticker.
-
-        Args:
-            display_mode: Should be 'stocks_ticker'
-            force_clear: If True, clear display before rendering
-        """
-        if not self.initialized:
-            self._display_error("Stocks ticker plugin not initialized")
-            return
-
-        if not self.stock_data and not self.crypto_data:
-            self._display_no_data()
-            return
-
-        # Display scrolling ticker
-        self._display_scrolling_ticker()
-
-    def _display_scrolling_ticker(self):
-        """Display scrolling stock/crypto ticker."""
-        try:
-            matrix_width = self.display_manager.matrix.width
-            matrix_height = self.display_manager.matrix.height
-
-            # Create base image
-            img = Image.new('RGB', (matrix_width, matrix_height), (0, 0, 0))
-            draw = ImageDraw.Draw(img)
-
-            # For now, display first few items (placeholder for scrolling implementation)
-            y_offset = 5
-            items_displayed = 0
-            max_items = 4
-
-            # Display stock data first
-            for symbol, data in list(self.stock_data.items())[:2]:
-                if items_displayed >= max_items:
-                    break
-
-                if y_offset > matrix_height - 15:
-                    break
-
-                # TODO: Implement scrolling ticker display
-                # TODO: Show symbol, price, change, percentage
-                # TODO: Use font manager for text rendering
-                # TODO: Add chart display if toggle_chart is enabled
-
-                # Simple placeholder display
-                price = data.get('price', 0)
-                change = data.get('change', 0)
-                change_str = f"+{change}" if change >= 0 else str(change)
-                change_color = tuple(config.get('stocks_positive_color', [0, 255, 0])) if change >= 0 else tuple(config.get('stocks_negative_color', [255, 0, 0]))
-
-                draw.text((5, y_offset), f"{symbol}:", fill=tuple(config.get('stocks_text_color', [255, 255, 255])))
-                draw.text((50, y_offset), f"${price:.2f}", fill=tuple(config.get('stocks_positive_color', [0, 255, 0])))
-                draw.text((100, y_offset), change_str, fill=change_color)
-
-                y_offset += self.font_size + 5
-                items_displayed += 1
-
-            # Display crypto data
-            for symbol, data in list(self.crypto_data.items())[:2]:
-                if items_displayed >= max_items:
-                    break
-
-                if y_offset > matrix_height - 15:
-                    break
-
-                price = data.get('price', 0)
-                change = data.get('change', 0)
-                change_str = f"+{change}" if change >= 0 else str(change)
-                change_color = tuple(config.get('crypto_positive_color', [0, 255, 0])) if change >= 0 else tuple(config.get('crypto_negative_color', [255, 0, 0]))
-
-                draw.text((5, y_offset), f"{symbol}:", fill=tuple(config.get('crypto_text_color', [255, 215, 0])))
-                draw.text((50, y_offset), f"${price:.2f}", fill=tuple(config.get('crypto_positive_color', [0, 255, 0])))
-                draw.text((100, y_offset), change_str, fill=change_color)
-
-                y_offset += self.font_size + 5
-                items_displayed += 1
-
-            self.display_manager.image = img.copy()
+        
+        if self.config_manager.enable_scrolling:
+            self._display_scrolling(force_clear)
+        else:
+            self._display_static(force_clear)
+    
+    def _display_scrolling(self, force_clear: bool = False) -> None:
+        """Display stocks with smooth scrolling animation."""
+        # Create scrolling image if needed
+        if not self.scroll_helper.cached_image or force_clear:
+            self._create_scrolling_display()
+        
+        if force_clear:
+            self.scroll_helper.reset_scroll()
+        
+        # Signal scrolling state
+        self.display_manager.set_scrolling_state(True)
+        self.display_manager.process_deferred_updates()
+        
+        # Update scroll position using the scroll helper
+        self.scroll_helper.update_scroll_position()
+        
+        # Get visible portion
+        visible_portion = self.scroll_helper.get_visible_portion()
+        if visible_portion:
+            # Update display
+            self.display_manager.image.paste(visible_portion, (0, 0))
             self.display_manager.update_display()
-
+        
+        # Log frame rate (less frequently to avoid spam)
+        self.scroll_helper.log_frame_rate()
+        
+        # Check if scroll is complete (wrapped around)
+        if self.scroll_helper.scroll_position == 0:
+            self.scroll_complete = True
+            self._smooth_scroll_position = 0.0  # Reset smooth position
+    
+    def _display_static(self, force_clear: bool = False) -> None:  # pylint: disable=unused-argument
+        """Display stocks in static mode - one at a time without scrolling."""
+        # Signal not scrolling
+        self.display_manager.set_scrolling_state(False)
+        
+        # Get current stock
+        symbols = list(self.stock_data.keys())
+        if not symbols:
+            self._show_error_state()
+            return
+        
+        current_symbol = symbols[self.current_stock_index % len(symbols)]
+        current_data = self.stock_data[current_symbol]
+        
+        # Create static display
+        static_image = self.display_renderer.create_static_display(current_symbol, current_data)
+        
+        # Update display
+        self.display_manager.image.paste(static_image, (0, 0))
+        self.display_manager.update_display()
+        
+        # Move to next stock after a delay
+        time.sleep(2)  # Show each stock for 2 seconds
+        self.current_stock_index += 1
+    
+    def _create_scrolling_display(self):
+        """Create the wide scrolling image with all stocks."""
+        try:
+            # Create scrolling image using display renderer
+            scrolling_image = self.display_renderer.create_scrolling_display(self.stock_data)
+            
+            # Set up scroll helper with the image
+            self.scroll_helper.cached_image = scrolling_image
+            self.scroll_helper.total_scroll_width = scrolling_image.width
+            
+            self.logger.debug("Created scrolling image: %dx%d", 
+                            scrolling_image.width, scrolling_image.height)
+            
         except Exception as e:
-            self.logger.error(f"Error displaying stocks ticker: {e}")
-            self._display_error("Display error")
-
-    def _display_no_data(self):
-        """Display message when no data is available."""
-        img = Image.new('RGB', (self.display_manager.matrix.width,
-                               self.display_manager.matrix.height),
-                       (0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.text((5, 12), "No Stock Data", fill=(150, 150, 150))
-
-        self.display_manager.image = img.copy()
-        self.display_manager.update_display()
-
-    def _display_error(self, message: str):
-        """Display error message."""
-        img = Image.new('RGB', (self.display_manager.matrix.width,
-                               self.display_manager.matrix.height),
-                       (0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.text((5, 12), message, fill=(255, 0, 0))
-
-        self.display_manager.image = img.copy()
-        self.display_manager.update_display()
-
+            self.logger.error("Error creating scrolling display: %s", e)
+    
+    def _show_error_state(self):
+        """Show error state when no data is available."""
+        try:
+            error_image = self.display_renderer._create_error_display()
+            self.display_manager.image.paste(error_image, (0, 0))
+            self.display_manager.update_display()
+        except Exception as e:
+            self.logger.error("Error showing error state: %s", e)
+    
     def get_display_duration(self) -> float:
-        """Get display duration from config."""
-        return self.display_duration
-
+        """Get the display duration in seconds."""
+        return self.config_manager.get_display_duration()
+    
+    def get_dynamic_duration(self) -> int:
+        """Get the dynamic duration setting."""
+        return self.config_manager.get_dynamic_duration()
+    
     def get_info(self) -> Dict[str, Any]:
-        """Return plugin info for web UI."""
-        info = super().get_info()
-        info.update({
-            'stock_symbols': config.get('stocks_symbols', []),
-            'crypto_symbols': config.get('crypto_crypto_symbols', []),
-            'crypto_enabled': config.get('crypto_enabled', True),
-            'toggle_chart': self.toggle_chart,
-            'last_update': self.last_update,
-            'display_duration': self.display_duration,
-            'scroll_speed': self.scroll_speed,
-            'show_change': config.get('stocks_show_change', True),
-            'show_percentage': config.get('stocks_show_percentage', True),
-            'show_volume': config.get('stocks_show_volume', False),
-            'show_market_cap': config.get('stocks_show_market_cap', False)
-        })
-        return info
-
+        """Get plugin information."""
+        return self.config_manager.get_plugin_info()
+    
+    # Configuration methods
+    def set_toggle_chart(self, enabled: bool) -> None:
+        """Set whether to show mini charts."""
+        self.config_manager.set_toggle_chart(enabled)
+        self.display_renderer.set_toggle_chart(enabled)
+    
+    def set_scroll_speed(self, speed: float) -> None:
+        """Set the scroll speed."""
+        self.config_manager.set_scroll_speed(speed)
+        self.scroll_helper.set_scroll_speed(speed)
+    
+    def set_scroll_delay(self, delay: float) -> None:
+        """Set the scroll delay."""
+        self.config_manager.set_scroll_delay(delay)
+    
+    def set_enable_scrolling(self, enabled: bool) -> None:
+        """Set whether scrolling is enabled."""
+        self.config_manager.set_enable_scrolling(enabled)
+        self.enable_scrolling = enabled  # Keep in sync
+    
+    def reload_config(self) -> None:
+        """Reload configuration."""
+        self.config_manager.reload_config()
+        # Update components with new config
+        self.data_fetcher.config = self.config_manager.plugin_config
+        self.display_renderer.config = self.config_manager.plugin_config
+        self.chart_renderer.config = self.config_manager.plugin_config
+    
     def cleanup(self) -> None:
-        """Cleanup resources."""
-        self.stock_data = {}
-        self.crypto_data = {}
-        self.logger.info("Stocks ticker plugin cleaned up")
+        """Clean up resources."""
+        try:
+            if hasattr(self.data_fetcher, 'cleanup'):
+                self.data_fetcher.cleanup()
+            self.logger.info("Stock ticker plugin cleanup completed")
+        except Exception as e:
+            self.logger.error("Error during cleanup: %s", e)
