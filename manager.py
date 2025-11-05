@@ -88,7 +88,9 @@ class StockTickerPlugin(BasePlugin):
                 
                 
             except Exception as e:
-                self.logger.error("Error updating data: %s", e)
+                import traceback
+                self.logger.error("Error updating stock/crypto data: %s", e)
+                self.logger.debug("Traceback: %s", traceback.format_exc())
     
     def display(self, force_clear: bool = False) -> None:
         """Display stocks with scrolling or static mode."""

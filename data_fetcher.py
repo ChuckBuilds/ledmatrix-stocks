@@ -33,6 +33,8 @@ class StockDataFetcher:
         self.config_manager = config_manager
         self.cache_manager = cache_manager
         self.logger = logger
+        # Store config for compatibility with reload_config()
+        self.config = config_manager.plugin_config
         
         # API configuration
         self.api_config = config_manager.api_config
@@ -48,7 +50,7 @@ class StockDataFetcher:
         self._init_http_session()
         
         # Initialize API helper
-        self.api_helper = APIHelper(logger)
+        self.api_helper = APIHelper(cache_manager=cache_manager, logger=logger)
         
         # Background service
         self.background_service = None
