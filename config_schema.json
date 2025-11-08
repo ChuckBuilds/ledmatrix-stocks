@@ -214,34 +214,6 @@
       "minItems": 3,
       "maxItems": 3,
       "default": [255, 0, 0]
-    },
-    "background_service": {
-      "type": "object",
-      "description": "Background data service configuration",
-      "properties": {
-        "request_timeout": {
-          "type": "number",
-          "description": "Request timeout in seconds",
-          "minimum": 5,
-          "maximum": 120,
-          "default": 30
-        },
-        "max_retries": {
-          "type": "number",
-          "description": "Maximum number of retries",
-          "minimum": 1,
-          "maximum": 10,
-          "default": 5
-        },
-        "priority": {
-          "type": "number",
-          "description": "Background service priority",
-          "minimum": 1,
-          "maximum": 5,
-          "default": 2
-        }
-      },
-      "additionalProperties": false
     }
   },
   "required": ["enabled"],
