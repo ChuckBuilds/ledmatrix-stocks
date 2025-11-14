@@ -126,11 +126,28 @@ class StockDataFetcher:
         api_symbol = symbol
         display_symbol = symbol.replace('-USD', '') if is_crypto else symbol
         
+        # Check cache first
+        cache_key = f"stock_data_{display_symbol}"
+        cache_ttl = self.config_manager.update_interval if hasattr(self.config_manager, 'update_interval') else 300
+        
+        if self.cache_manager:
+            cached_data = self.cache_manager.get(cache_key, max_age=cache_ttl)
+            if cached_data:
+                self.logger.debug("Using cached data for %s", display_symbol)
+                return cached_data
+        
         # Try background service first
         if self.background_service and hasattr(self.background_service, 'submit'):
-            return self._fetch_via_background_service(api_symbol, display_symbol, is_crypto)
+            result = self._fetch_via_background_service(api_symbol, display_symbol, is_crypto)
         else:
-            return self._fetch_direct(api_symbol, display_symbol, is_crypto)
+            result = self._fetch_direct(api_symbol, display_symbol, is_crypto)
+        
+        # Cache the result if successful
+        if result and self.cache_manager:
+            self.cache_manager.set(cache_key, result)
+            self.logger.debug("Cached data for %s (max_age: %ds)", display_symbol, cache_ttl)
+        
+        return result
     
     def _fetch_via_background_service(self, api_symbol: str, display_symbol: str, is_crypto: bool) -> Optional[Dict[str, Any]]:
         """Fetch data using background service."""
