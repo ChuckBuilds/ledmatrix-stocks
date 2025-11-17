@@ -112,8 +112,6 @@ class StockTickerPlugin(BasePlugin):
         
         if force_clear:
             self.scroll_helper.reset_scroll()
-            # Clear display when switching to this plugin
-            self.display_manager.clear()
         
         # Signal scrolling state
         self.display_manager.set_scrolling_state(True)
@@ -125,7 +123,7 @@ class StockTickerPlugin(BasePlugin):
         # Get visible portion
         visible_portion = self.scroll_helper.get_visible_portion()
         if visible_portion:
-            # Update display
+            # Update display - paste overwrites previous content (no need to clear)
             self.display_manager.image.paste(visible_portion, (0, 0))
             self.display_manager.update_display()
         
@@ -142,10 +140,6 @@ class StockTickerPlugin(BasePlugin):
         # Signal not scrolling
         self.display_manager.set_scrolling_state(False)
         
-        if force_clear:
-            # Clear display when switching to this plugin
-            self.display_manager.clear()
-        
         # Get current stock
         symbols = list(self.stock_data.keys())
         if not symbols:
@@ -158,7 +152,7 @@ class StockTickerPlugin(BasePlugin):
         # Create static display
         static_image = self.display_renderer.create_static_display(current_symbol, current_data)
         
-        # Update display
+        # Update display - paste overwrites previous content (no need to clear)
         self.display_manager.image.paste(static_image, (0, 0))
         self.display_manager.update_display()
         
