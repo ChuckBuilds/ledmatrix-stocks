@@ -166,15 +166,19 @@ class StockTickerPlugin(BasePlugin):
             # Create scrolling image using display renderer
             scrolling_image = self.display_renderer.create_scrolling_display(self.stock_data)
             
-            # Set up scroll helper with the image
-            self.scroll_helper.cached_image = scrolling_image
-            self.scroll_helper.total_scroll_width = scrolling_image.width
-            
-            self.logger.debug("Created scrolling image: %dx%d", 
-                            scrolling_image.width, scrolling_image.height)
+            if scrolling_image:
+                # Set up scroll helper with the image (properly initializes cached_array and state)
+                self.scroll_helper.set_scrolling_image(scrolling_image)
+                
+                self.logger.debug("Created scrolling image: %dx%d", 
+                                scrolling_image.width, scrolling_image.height)
+            else:
+                self.logger.error("Failed to create scrolling image")
+                self.scroll_helper.clear_cache()
             
         except Exception as e:
             self.logger.error("Error creating scrolling display: %s", e)
+            self.scroll_helper.clear_cache()
     
     def _show_error_state(self):
         """Show error state when no data is available."""
