@@ -112,6 +112,8 @@ class StockTickerPlugin(BasePlugin):
         
         if force_clear:
             self.scroll_helper.reset_scroll()
+            # Clear display when switching to this plugin
+            self.display_manager.clear()
         
         # Signal scrolling state
         self.display_manager.set_scrolling_state(True)
@@ -135,10 +137,14 @@ class StockTickerPlugin(BasePlugin):
             self.scroll_complete = True
             self._smooth_scroll_position = 0.0  # Reset smooth position
     
-    def _display_static(self, force_clear: bool = False) -> None:  # pylint: disable=unused-argument
+    def _display_static(self, force_clear: bool = False) -> None:
         """Display stocks in static mode - one at a time without scrolling."""
         # Signal not scrolling
         self.display_manager.set_scrolling_state(False)
+        
+        if force_clear:
+            # Clear display when switching to this plugin
+            self.display_manager.clear()
         
         # Get current stock
         symbols = list(self.stock_data.keys())
