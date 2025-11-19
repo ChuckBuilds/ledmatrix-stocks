@@ -26,13 +26,16 @@ class StockDisplayRenderer:
         self.toggle_chart = config.get('toggle_chart', True)
         self.font_size = config.get('font_size', 10)
         
-        # Colors
+        # Colors for stocks (top level)
         self.text_color = tuple(config.get('text_color', [255, 255, 255]))
         self.positive_color = tuple(config.get('positive_color', [0, 255, 0]))
         self.negative_color = tuple(config.get('negative_color', [255, 0, 0]))
-        self.crypto_text_color = tuple(config.get('crypto_text_color', [255, 255, 0]))
-        self.crypto_positive_color = tuple(config.get('crypto_positive_color', [0, 255, 0]))
-        self.crypto_negative_color = tuple(config.get('crypto_negative_color', [255, 0, 0]))
+        
+        # Colors for crypto (nested under 'crypto' object per schema)
+        crypto_config = config.get('crypto', {})
+        self.crypto_text_color = tuple(crypto_config.get('text_color', [255, 215, 0]))
+        self.crypto_positive_color = tuple(crypto_config.get('positive_color', [0, 255, 0]))
+        self.crypto_negative_color = tuple(crypto_config.get('negative_color', [255, 0, 0]))
         
         # Initialize helpers
         self.logo_helper = LogoHelper(display_width, display_height, logger=logger)
@@ -53,7 +56,8 @@ class StockDisplayRenderer:
     def create_stock_display(self, symbol: str, data: Dict[str, Any]) -> Image.Image:
         """Create a display image for a single stock or crypto - matching old stock manager layout exactly."""
         # Create a wider image for scrolling - adjust width based on chart toggle
-        width = int(self.display_width * (2 if self.toggle_chart else 1.2))  # Much more compact when no chart
+        # Match old stock_manager: width = int(self.display_manager.matrix.width * (2 if self.toggle_chart else 1.5))
+        width = int(self.display_width * (2 if self.toggle_chart else 1.5))
         height = self.display_height
         image = Image.new('RGB', (width, height), (0, 0, 0))
         draw = ImageDraw.Draw(image)
@@ -63,7 +67,7 @@ class StockDisplayRenderer:
         # Draw large stock/crypto logo on the left
         logo = self._get_stock_logo(symbol, is_crypto)
         if logo:
-            # Position logo on the left side with minimal spacing
+            # Position logo on the left side with minimal spacing - matching old stock_manager
             logo_x = 2  # Small margin from left edge
             logo_y = (height - logo.height) // 2
             image.paste(logo, (logo_x, logo_y), logo)
@@ -96,7 +100,8 @@ class StockDisplayRenderer:
         change_bbox = draw.textbbox((0, 0), change_text, font=change_font)
         
         # Calculate total height needed - adjust gaps based on chart toggle
-        text_gap = 2 if self.toggle_chart else 1  # Reduced gap when no chart
+        # Match old stock_manager: text_gap = 2 if self.toggle_chart else 1
+        text_gap = 2 if self.toggle_chart else 1
         total_text_height = (symbol_bbox[3] - symbol_bbox[1]) + \
                            (price_bbox[3] - price_bbox[1]) + \
                            (change_bbox[3] - change_bbox[1]) + \
@@ -106,12 +111,13 @@ class StockDisplayRenderer:
         start_y = (height - total_text_height) // 2
         
         # Calculate center x position for the column - adjust based on chart toggle
+        # Match old stock_manager exactly
         if self.toggle_chart:
             # When chart is enabled, center text more to the left
             column_x = width // 2.85
         else:
-            # When chart is disabled, position text closer to logo for more compact layout
-            column_x = width // 1.8
+            # When chart is disabled, position text with more space from logo
+            column_x = width // 2.2
         
         # Draw symbol
         symbol_width = symbol_bbox[2] - symbol_bbox[0]
@@ -196,31 +202,50 @@ class StockDisplayRenderer:
         return image
     
     def create_scrolling_display(self, all_data: Dict[str, Any]) -> Image.Image:
-        """Create a wide scrolling image with all stocks/crypto."""
+        """Create a wide scrolling image with all stocks/crypto - matching old stock_manager spacing."""
         if not all_data:
             return self._create_error_display()
         
-        # Calculate total width needed
-        stock_displays = []
-        total_width = 0
+        # Calculate total width needed - match old stock_manager spacing logic
+        width = self.display_width
+        height = self.display_height
         
+        # Create individual stock displays
+        stock_displays = []
         for symbol, data in all_data.items():
             display = self.create_stock_display(symbol, data)
             stock_displays.append(display)
-            total_width += display.width
         
-        # Add spacing between stocks
-        spacing = 20
-        total_width += spacing * (len(stock_displays) - 1)
+        # Calculate spacing - match old stock_manager exactly
+        # Old code: stock_gap = width // 6, element_gap = width // 8
+        stock_gap = width // 6  # Reduced gap between stocks
+        element_gap = width // 8  # Reduced gap between elements within a stock
+        
+        # Calculate total width - match old stock_manager calculation
+        # Old code: total_width = sum(width * 2 for _ in symbols) + stock_gap * (len(symbols) - 1) + element_gap * (len(symbols) * 2 - 1)
+        # But each display already has its own width (width * 2 or width * 1.5), so we sum display widths
+        total_width = sum(display.width for display in stock_displays)
+        total_width += stock_gap * (len(stock_displays) - 1)
+        total_width += element_gap * (len(stock_displays) * 2 - 1)
         
         # Create scrolling image
-        scrolling_image = Image.new('RGB', (total_width, self.display_height), (0, 0, 0))
+        scrolling_image = Image.new('RGB', (total_width, height), (0, 0, 0))
         
-        # Paste all stock displays
-        x_offset = 0
-        for display in stock_displays:
-            scrolling_image.paste(display, (x_offset, 0))
-            x_offset += display.width + spacing
+        # Paste all stock displays with spacing - match old stock_manager logic
+        # Old code: current_x = width (starts with display width gap)
+        current_x = width  # Add initial gap before the first stock
+        
+        for i, display in enumerate(stock_displays):
+            # Paste this stock image into the full image
+            scrolling_image.paste(display, (current_x, 0))
+            
+            # Move to next position with consistent spacing
+            # Old code: current_x += width * 2 + element_gap
+            current_x += display.width + element_gap
+            
+            # Add extra gap between stocks (except after the last stock)
+            if i < len(stock_displays) - 1:
+                current_x += stock_gap
         
         return scrolling_image
     
@@ -244,25 +269,32 @@ class StockDisplayRenderer:
     
     def _draw_mini_chart(self, draw: ImageDraw.Draw, price_history: List[Dict], 
                         width: int, height: int, color: Tuple[int, int, int]) -> None:
-        """Draw a mini price chart on the right side of the display."""
+        """Draw a mini price chart on the right side of the display - matching old stock_manager exactly."""
         if len(price_history) < 2:
             return
         
-        # Chart dimensions
-        chart_width = width // 4
-        chart_height = height - 4
-        chart_x = width - chart_width - 2
-        chart_y = 2
+        # Chart dimensions - match old stock_manager exactly
+        # Old code: chart_width = int(width // 2.5), chart_height = height // 1.5
+        chart_width = int(width // 2.5)  # Reduced from width//2.5 to prevent overlap
+        chart_height = height // 1.5
+        chart_x = width - chart_width - 4  # 4px margin from right edge
+        chart_y = (height - chart_height) // 2
         
-        # Extract prices
+        # Extract prices - match old stock_manager exactly
         prices = [point['price'] for point in price_history if 'price' in point]
         if len(prices) < 2:
             return
         
-        # Normalize prices to chart height
+        # Find min and max prices for scaling - match old stock_manager
         min_price = min(prices)
         max_price = max(prices)
+        
+        # Add padding to avoid flat lines when prices are very close - match old stock_manager
         price_range = max_price - min_price
+        if price_range < 0.01:
+            min_price -= 0.01
+            max_price += 0.01
+            price_range = 0.02
         
         if price_range == 0:
             # All prices are the same, draw a horizontal line
@@ -270,15 +302,17 @@ class StockDisplayRenderer:
             draw.line([(chart_x, y), (chart_x + chart_width, y)], fill=color, width=1)
             return
         
-        # Draw chart line
+        # Calculate points for the line - match old stock_manager exactly
         points = []
         for i, price in enumerate(prices):
             x = chart_x + (i * chart_width) // (len(prices) - 1)
             y = chart_y + chart_height - int(((price - min_price) / price_range) * chart_height)
             points.append((x, y))
         
+        # Draw lines between points - match old stock_manager
         if len(points) > 1:
-            draw.line(points, fill=color, width=1)
+            for i in range(len(points) - 1):
+                draw.line([points[i], points[i + 1]], fill=color, width=1)
     
     def _create_error_display(self) -> Image.Image:
         """Create an error display when no data is available."""

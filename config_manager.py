@@ -41,16 +41,26 @@ class StockConfigManager:
         self.dynamic_duration = True
         self.min_duration = 30
         self.max_duration = 300
+        self.duration_buffer = 0.1
         self.font_size = 10
         self.update_interval = 300
         
-        # Display settings
+        # Display settings for stocks
         self.text_color = [255, 255, 255]
         self.positive_color = [0, 255, 0]
         self.negative_color = [255, 0, 0]
-        self.crypto_text_color = [255, 255, 0]
+        self.show_change = True
+        self.show_percentage = True
+        self.show_volume = False
+        self.show_market_cap = False
+        
+        # Display settings for crypto (loaded from crypto object)
+        self.crypto_text_color = [255, 215, 0]  # Default from schema
         self.crypto_positive_color = [0, 255, 0]
         self.crypto_negative_color = [255, 0, 0]
+        self.crypto_show_change = True
+        self.crypto_show_percentage = True
+        
         self.stock_symbols = []
         self.crypto_symbols = []
         
@@ -79,20 +89,43 @@ class StockConfigManager:
             self.dynamic_duration = self.plugin_config.get('dynamic_duration', True)
             self.min_duration = self.plugin_config.get('min_duration', 30)
             self.max_duration = self.plugin_config.get('max_duration', 300)
+            self.duration_buffer = self.plugin_config.get('duration_buffer', 0.1)
             self.font_size = self.plugin_config.get('font_size', 10)
             self.update_interval = self.plugin_config.get('update_interval', 300)
             
-            # Display settings
+            # Display settings for stocks (top level)
             self.text_color = self.plugin_config.get('text_color', [255, 255, 255])
             self.positive_color = self.plugin_config.get('positive_color', [0, 255, 0])
             self.negative_color = self.plugin_config.get('negative_color', [255, 0, 0])
-            self.crypto_text_color = self.plugin_config.get('crypto_text_color', [255, 255, 0])
-            self.crypto_positive_color = self.plugin_config.get('crypto_positive_color', [0, 255, 0])
-            self.crypto_negative_color = self.plugin_config.get('crypto_negative_color', [255, 0, 0])
+            self.show_change = self.plugin_config.get('show_change', True)
+            self.show_percentage = self.plugin_config.get('show_percentage', True)
+            self.show_volume = self.plugin_config.get('show_volume', False)
+            self.show_market_cap = self.plugin_config.get('show_market_cap', False)
             
             # Stock and crypto symbols
-            self.stock_symbols = self.plugin_config.get('stocks', {}).get('stock_symbols', [])
-            self.crypto_symbols = self.plugin_config.get('crypto', {}).get('crypto_symbols', [])
+            # Stock symbols are at top level 'symbols' per config schema
+            # Default symbols from schema: ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "META"]
+            self.stock_symbols = self.plugin_config.get('symbols', ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "META"])
+            
+            # Crypto configuration (nested under 'crypto' object)
+            crypto_config = self.plugin_config.get('crypto', {})
+            if crypto_config.get('enabled', True):
+                # Default crypto symbols from schema: ["BTC", "ETH", "ADA", "SOL", "DOT"]
+                self.crypto_symbols = crypto_config.get('crypto_symbols', ["BTC", "ETH", "ADA", "SOL", "DOT"])
+                # Crypto display settings are under crypto object per schema
+                self.crypto_text_color = crypto_config.get('text_color', [255, 215, 0])
+                self.crypto_positive_color = crypto_config.get('positive_color', [0, 255, 0])
+                self.crypto_negative_color = crypto_config.get('negative_color', [255, 0, 0])
+                self.crypto_show_change = crypto_config.get('show_change', True)
+                self.crypto_show_percentage = crypto_config.get('show_percentage', True)
+            else:
+                self.crypto_symbols = []
+                # Set defaults even if disabled (for consistency)
+                self.crypto_text_color = [255, 215, 0]
+                self.crypto_positive_color = [0, 255, 0]
+                self.crypto_negative_color = [255, 0, 0]
+                self.crypto_show_change = True
+                self.crypto_show_percentage = True
             
             
             # API configuration
@@ -121,14 +154,21 @@ class StockConfigManager:
         self.dynamic_duration = True
         self.min_duration = 30
         self.max_duration = 300
+        self.duration_buffer = 0.1
         self.font_size = 10
         self.update_interval = 300
         self.text_color = [255, 255, 255]
         self.positive_color = [0, 255, 0]
         self.negative_color = [255, 0, 0]
-        self.crypto_text_color = [255, 255, 0]
+        self.show_change = True
+        self.show_percentage = True
+        self.show_volume = False
+        self.show_market_cap = False
+        self.crypto_text_color = [255, 215, 0]
         self.crypto_positive_color = [0, 255, 0]
         self.crypto_negative_color = [255, 0, 0]
+        self.crypto_show_change = True
+        self.crypto_show_percentage = True
         self.stock_symbols = []
         self.crypto_symbols = []
         self.api_config = {}
