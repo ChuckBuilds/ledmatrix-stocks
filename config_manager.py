@@ -31,7 +31,10 @@ class StockConfigManager:
         # Basic settings
         self.enabled = True
         self.display_duration = 30
-        self.scroll_speed = 50.0  # pixels per second
+        # Base scroll speed in pixels per second (used when scroll_speed is a multiplier)
+        self.base_scroll_speed = 30.0  # pixels per second
+        self.scroll_speed_multiplier = 1.0  # Multiplier from config
+        self.scroll_speed = 30.0  # Calculated pixels per second
         self.scroll_delay = 0.001
         self.enable_scrolling = True
         self.toggle_chart = False
@@ -63,7 +66,13 @@ class StockConfigManager:
             # Basic settings
             self.enabled = self.plugin_config.get('enabled', True)
             self.display_duration = self.plugin_config.get('display_duration', 30)
-            self.scroll_speed = self.plugin_config.get('scroll_speed', 0.15)
+            # Load scroll_speed as multiplier (0.5-5.0) and convert to pixels per second
+            self.base_scroll_speed = 30.0  # Base speed in pixels per second
+            self.scroll_speed_multiplier = self.plugin_config.get('scroll_speed', 1.0)
+            # Convert multiplier to pixels per second: base * multiplier
+            # Clamp multiplier to valid range (0.5-5.0) per schema
+            self.scroll_speed_multiplier = max(0.5, min(5.0, self.scroll_speed_multiplier))
+            self.scroll_speed = self.base_scroll_speed * self.scroll_speed_multiplier
             self.scroll_delay = self.plugin_config.get('scroll_delay', 0.001)
             self.enable_scrolling = self.plugin_config.get('enable_scrolling', True)
             self.toggle_chart = self.plugin_config.get('toggle_chart', False)
@@ -103,7 +112,9 @@ class StockConfigManager:
         """Set default configuration values."""
         self.enabled = True
         self.display_duration = 30
-        self.scroll_speed = 50.0  # pixels per second
+        self.base_scroll_speed = 30.0
+        self.scroll_speed_multiplier = 1.0
+        self.scroll_speed = 30.0  # pixels per second
         self.scroll_delay = 0.001
         self.enable_scrolling = True
         self.toggle_chart = False
@@ -149,9 +160,13 @@ class StockConfigManager:
         self.logger.debug("Chart toggle set to: %s", enabled)
     
     def set_scroll_speed(self, speed: float) -> None:
-        """Set the scroll speed."""
-        self.scroll_speed = max(0.01, min(10.0, speed))
-        self.logger.debug("Scroll speed set to: %.3f", self.scroll_speed)
+        """Set the scroll speed (as multiplier from config, 0.5-5.0)."""
+        # Clamp multiplier to valid range per schema
+        self.scroll_speed_multiplier = max(0.5, min(5.0, speed))
+        # Convert to pixels per second
+        self.scroll_speed = self.base_scroll_speed * self.scroll_speed_multiplier
+        self.logger.debug("Scroll speed multiplier set to: %.2f (pixels/sec: %.1f)", 
+                         self.scroll_speed_multiplier, self.scroll_speed)
     
     def set_scroll_delay(self, delay: float) -> None:
         """Set the scroll delay."""
@@ -173,7 +188,8 @@ class StockConfigManager:
             'chart_enabled': self.toggle_chart,
             'stocks_count': len(self.stock_symbols),
             'crypto_count': len(self.crypto_symbols),
-            'scroll_speed': self.scroll_speed,
+            'scroll_speed': self.scroll_speed_multiplier,  # Return multiplier for config compatibility
+            'scroll_speed_px_per_sec': self.scroll_speed,  # Actual pixels per second
             'display_duration': self.display_duration
         }
     
