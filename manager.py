@@ -65,7 +65,12 @@ class StockTickerPlugin(BasePlugin):
         
         # Initialize scroll helper
         self.scroll_helper = self.display_renderer.get_scroll_helper()
-        self.scroll_helper.set_scroll_speed(self.config_manager.scroll_speed)
+        # Convert pixels per frame to pixels per second for ScrollHelper
+        # scroll_speed is pixels per frame, scroll_delay is seconds per frame
+        # pixels per second = pixels per frame / seconds per frame
+        pixels_per_second = self.config_manager.scroll_speed / self.config_manager.scroll_delay if self.config_manager.scroll_delay > 0 else self.config_manager.scroll_speed * 100
+        self.scroll_helper.set_scroll_speed(pixels_per_second)
+        self.scroll_helper.set_scroll_delay(self.config_manager.scroll_delay)
         
         self.logger.info("Stock ticker plugin initialized - %dx%d", 
                         self.display_width, self.display_height)
@@ -208,19 +213,38 @@ class StockTickerPlugin(BasePlugin):
         self.display_renderer.set_toggle_chart(enabled)
     
     def set_scroll_speed(self, speed: float) -> None:
-        """Set the scroll speed."""
+        """Set the scroll speed (pixels per frame)."""
         self.config_manager.set_scroll_speed(speed)
-        self.scroll_helper.set_scroll_speed(speed)
+        # Convert pixels per frame to pixels per second for ScrollHelper
+        pixels_per_second = speed / self.config_manager.scroll_delay if self.config_manager.scroll_delay > 0 else speed * 100
+        self.scroll_helper.set_scroll_speed(pixels_per_second)
     
     def set_scroll_delay(self, delay: float) -> None:
         """Set the scroll delay."""
         self.config_manager.set_scroll_delay(delay)
+        # Update scroll helper with new delay and recalculate pixels per second
+        self.scroll_helper.set_scroll_delay(delay)
+        # Recalculate pixels per second with new delay
+        pixels_per_second = self.config_manager.scroll_speed / delay if delay > 0 else self.config_manager.scroll_speed * 100
+        self.scroll_helper.set_scroll_speed(pixels_per_second)
     
     def set_enable_scrolling(self, enabled: bool) -> None:
         """Set whether scrolling is enabled."""
         self.config_manager.set_enable_scrolling(enabled)
         self.enable_scrolling = enabled  # Keep in sync
     
+    def validate_config(self) -> bool:
+        """Validate plugin configuration."""
+        # Call parent validation first
+        if not super().validate_config():
+            return False
+            
+        # Use config manager's validation
+        if not self.config_manager.validate_config():
+            return False
+            
+        return True
+
     def reload_config(self) -> None:
         """Reload configuration."""
         self.config_manager.reload_config()

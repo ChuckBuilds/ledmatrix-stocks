@@ -86,7 +86,29 @@ class StockDisplayRenderer:
         display_symbol = symbol.replace('-USD', '') if is_crypto else symbol
         symbol_text = display_symbol
         price_text = f"${data['price']:.2f}"
-        change_text = f"{data['change']:+.2f} ({data['change']:+.1f}%)"
+        
+        # Build change text based on show_change and show_percentage flags
+        # Get flags from config (stock-specific or crypto-specific)
+        if is_crypto:
+            show_change = self.config.get('crypto', {}).get('show_change', True)
+            show_percentage = self.config.get('crypto', {}).get('show_percentage', True)
+        else:
+            show_change = self.config.get('show_change', True)
+            show_percentage = self.config.get('show_percentage', True)
+        
+        # Build change text components
+        change_parts = []
+        if show_change:
+            change_parts.append(f"{data['change']:+.2f}")
+        if show_percentage:
+            # Use change_percent if available, otherwise calculate from change and open
+            if 'change_percent' in data:
+                change_parts.append(f"({data['change_percent']:+.1f}%)")
+            elif 'open' in data and data['open'] > 0:
+                change_percent = (data['change'] / data['open']) * 100
+                change_parts.append(f"({change_percent:+.1f}%)")
+        
+        change_text = " ".join(change_parts) if change_parts else ""
         
         # Get colors based on change
         if data['change'] >= 0:
@@ -99,15 +121,24 @@ class StockDisplayRenderer:
         # Calculate text dimensions for proper spacing (matching old stock manager)
         symbol_bbox = draw.textbbox((0, 0), symbol_text, font=symbol_font)
         price_bbox = draw.textbbox((0, 0), price_text, font=price_font)
-        change_bbox = draw.textbbox((0, 0), change_text, font=change_font)
+        
+        # Only calculate change_bbox if change_text is not empty
+        if change_text:
+            change_bbox = draw.textbbox((0, 0), change_text, font=change_font)
+            change_height = change_bbox[3] - change_bbox[1]
+        else:
+            change_bbox = (0, 0, 0, 0)
+            change_height = 0
         
         # Calculate total height needed - adjust gaps based on chart toggle
         # Match old stock_manager: text_gap = 2 if self.toggle_chart else 1
         text_gap = 2 if self.toggle_chart else 1
+        # Only add change height and gap if change is shown
+        change_gap = text_gap if change_text else 0
         total_text_height = (symbol_bbox[3] - symbol_bbox[1]) + \
                            (price_bbox[3] - price_bbox[1]) + \
-                           (change_bbox[3] - change_bbox[1]) + \
-                           (text_gap * 2)  # Account for gaps between elements
+                           change_height + \
+                           (text_gap + change_gap)  # Account for gaps between elements
         
         # Calculate starting y position to center all text
         start_y = (height - total_text_height) // 2
@@ -132,11 +163,12 @@ class StockDisplayRenderer:
         price_y = start_y + (symbol_bbox[3] - symbol_bbox[1]) + text_gap  # Adjusted gap
         draw.text((price_x, price_y), price_text, font=price_font, fill=text_color)
         
-        # Draw change with color based on value
-        change_width = change_bbox[2] - change_bbox[0]
-        change_x = column_x - (change_width // 2)
-        change_y = price_y + (price_bbox[3] - price_bbox[1]) + text_gap  # Adjusted gap
-        draw.text((change_x, change_y), change_text, font=change_font, fill=change_color)
+        # Draw change with color based on value (only if change_text is not empty)
+        if change_text:
+            change_width = change_bbox[2] - change_bbox[0]
+            change_x = column_x - (change_width // 2)
+            change_y = price_y + (price_bbox[3] - price_bbox[1]) + text_gap  # Adjusted gap
+            draw.text((change_x, change_y), change_text, font=change_font, fill=change_color)
         
         # Draw mini chart on the right only if toggle_chart is enabled
         if self.toggle_chart and 'price_history' in data and len(data['price_history']) >= 2:
@@ -170,7 +202,27 @@ class StockDisplayRenderer:
         display_symbol = symbol.replace('-USD', '') if is_crypto else symbol
         symbol_text = display_symbol
         price_text = f"${data['price']:.2f}"
-        change_text = f"{data['change']:+.2f} ({data['change']:+.1f}%)"
+        
+        # Build change text based on show_change and show_percentage flags
+        if is_crypto:
+            show_change = self.config.get('crypto', {}).get('show_change', True)
+            show_percentage = self.config.get('crypto', {}).get('show_percentage', True)
+        else:
+            show_change = self.config.get('show_change', True)
+            show_percentage = self.config.get('show_percentage', True)
+        
+        # Build change text components
+        change_parts = []
+        if show_change:
+            change_parts.append(f"{data['change']:+.2f}")
+        if show_percentage:
+            if 'change_percent' in data:
+                change_parts.append(f"({data['change_percent']:+.1f}%)")
+            elif 'open' in data and data['open'] > 0:
+                change_percent = (data['change'] / data['open']) * 100
+                change_parts.append(f"({change_percent:+.1f}%)")
+        
+        change_text = " ".join(change_parts) if change_parts else ""
         
         # Get colors
         if data['change'] >= 0:
@@ -183,7 +235,12 @@ class StockDisplayRenderer:
         # Calculate positions
         symbol_bbox = draw.textbbox((0, 0), symbol_text, font=symbol_font)
         price_bbox = draw.textbbox((0, 0), price_text, font=price_font)
-        change_bbox = draw.textbbox((0, 0), change_text, font=change_font)
+        
+        # Only calculate change_bbox if change_text is not empty
+        if change_text:
+            change_bbox = draw.textbbox((0, 0), change_text, font=change_font)
+        else:
+            change_bbox = (0, 0, 0, 0)
         
         # Center everything - ensure integer
         center_x = int(self.display_width) // 2
@@ -198,10 +255,11 @@ class StockDisplayRenderer:
         price_x = center_x - (price_width // 2)
         draw.text((price_x, 15), price_text, font=price_font, fill=text_color)
         
-        # Draw change
-        change_width = change_bbox[2] - change_bbox[0]
-        change_x = center_x - (change_width // 2)
-        draw.text((change_x, 25), change_text, font=change_font, fill=change_color)
+        # Draw change (only if change_text is not empty)
+        if change_text:
+            change_width = change_bbox[2] - change_bbox[0]
+            change_x = center_x - (change_width // 2)
+            draw.text((change_x, 25), change_text, font=change_font, fill=change_color)
         
         return image
     
@@ -272,6 +330,14 @@ class StockDisplayRenderer:
         except (OSError, IOError) as e:
             self.logger.warning("Error loading logo for %s: %s", symbol, e)
             return None
+    
+    def _get_stock_color(self, change: float) -> Tuple[int, int, int]:
+        """Get color based on stock performance - matching old stock manager."""
+        if change > 0:
+            return (0, 255, 0)  # Green for positive
+        elif change < 0:
+            return (255, 0, 0)  # Red for negative
+        return (255, 255, 0)  # Yellow for no change
     
     def _draw_mini_chart(self, draw: ImageDraw.Draw, price_history: List[Dict], 
                         width: int, height: int, color: Tuple[int, int, int]) -> None:

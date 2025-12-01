@@ -211,15 +211,16 @@ class StockDataFetcher:
                             'price': closes[i]
                         })
             
-            # Create result data
+            # Create result data - matching old manager structure
             result_data = {
                 'symbol': display_symbol,
+                'name': meta.get('symbol', display_symbol),  # Use symbol as name if not available
                 'price': round(current_price, 2),
-                'change': round(change, 2),
-                'change_percent': round(change_percent, 2),
-                'is_crypto': is_crypto,
+                'change': round(change, 2),  # Dollar change (current_price - previous_close)
+                'change_percent': round(change_percent, 2),  # Percentage change
+                'open': previous_close,  # Store previous_close as "open" to match old structure
                 'price_history': price_history,
-                'last_updated': datetime.now()
+                'is_crypto': is_crypto
             }
             
             return result_data

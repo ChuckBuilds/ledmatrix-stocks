@@ -31,19 +31,16 @@ class StockConfigManager:
         # Basic settings
         self.enabled = True
         self.display_duration = 30
-        # Base scroll speed in pixels per second (used when scroll_speed is a multiplier)
-        self.base_scroll_speed = 30.0  # pixels per second
-        self.scroll_speed_multiplier = 1.0  # Multiplier from config
-        self.scroll_speed = 30.0  # Calculated pixels per second
-        self.scroll_delay = 0.001
+        # Scroll speed in pixels per frame (matching old manager)
+        self.scroll_speed = 1.0  # Pixels per frame (default 1)
+        self.scroll_delay = 0.01  # Seconds between frames (default 0.01)
         self.enable_scrolling = True
         self.toggle_chart = False
         self.dynamic_duration = True
         self.min_duration = 30
         self.max_duration = 300
         self.duration_buffer = 0.1
-        self.font_size = 10
-        self.update_interval = 300
+        self.update_interval = 600  # Default 600 seconds (10 minutes)
         
         # Display settings for stocks
         self.text_color = [255, 255, 255]
@@ -76,22 +73,18 @@ class StockConfigManager:
             # Basic settings
             self.enabled = self.plugin_config.get('enabled', True)
             self.display_duration = self.plugin_config.get('display_duration', 30)
-            # Load scroll_speed as multiplier (0.5-5.0) and convert to pixels per second
-            self.base_scroll_speed = 30.0  # Base speed in pixels per second
-            self.scroll_speed_multiplier = self.plugin_config.get('scroll_speed', 1.0)
-            # Convert multiplier to pixels per second: base * multiplier
-            # Clamp multiplier to valid range (0.5-5.0) per schema
-            self.scroll_speed_multiplier = max(0.5, min(5.0, self.scroll_speed_multiplier))
-            self.scroll_speed = self.base_scroll_speed * self.scroll_speed_multiplier
-            self.scroll_delay = self.plugin_config.get('scroll_delay', 0.001)
+            # Scroll speed in pixels per frame (matching old manager)
+            self.scroll_speed = self.plugin_config.get('scroll_speed', 1.0)
+            # Clamp to valid range (0.5-5.0) per schema
+            self.scroll_speed = max(0.5, min(5.0, self.scroll_speed))
+            self.scroll_delay = self.plugin_config.get('scroll_delay', 0.01)
             self.enable_scrolling = self.plugin_config.get('enable_scrolling', True)
             self.toggle_chart = self.plugin_config.get('toggle_chart', False)
             self.dynamic_duration = self.plugin_config.get('dynamic_duration', True)
             self.min_duration = self.plugin_config.get('min_duration', 30)
             self.max_duration = self.plugin_config.get('max_duration', 300)
             self.duration_buffer = self.plugin_config.get('duration_buffer', 0.1)
-            self.font_size = self.plugin_config.get('font_size', 10)
-            self.update_interval = self.plugin_config.get('update_interval', 300)
+            self.update_interval = self.plugin_config.get('update_interval', 600)
             
             # Display settings for stocks (top level)
             self.text_color = self.plugin_config.get('text_color', [255, 255, 255])
@@ -99,8 +92,6 @@ class StockConfigManager:
             self.negative_color = self.plugin_config.get('negative_color', [255, 0, 0])
             self.show_change = self.plugin_config.get('show_change', True)
             self.show_percentage = self.plugin_config.get('show_percentage', True)
-            self.show_volume = self.plugin_config.get('show_volume', False)
-            self.show_market_cap = self.plugin_config.get('show_market_cap', False)
             
             # Stock and crypto symbols
             # Stock symbols are at top level 'symbols' per config schema
@@ -145,25 +136,20 @@ class StockConfigManager:
         """Set default configuration values."""
         self.enabled = True
         self.display_duration = 30
-        self.base_scroll_speed = 30.0
-        self.scroll_speed_multiplier = 1.0
-        self.scroll_speed = 30.0  # pixels per second
-        self.scroll_delay = 0.001
+        self.scroll_speed = 1.0  # Pixels per frame
+        self.scroll_delay = 0.01
         self.enable_scrolling = True
         self.toggle_chart = False
         self.dynamic_duration = True
         self.min_duration = 30
         self.max_duration = 300
         self.duration_buffer = 0.1
-        self.font_size = 10
-        self.update_interval = 300
+        self.update_interval = 600
         self.text_color = [255, 255, 255]
         self.positive_color = [0, 255, 0]
         self.negative_color = [255, 0, 0]
         self.show_change = True
         self.show_percentage = True
-        self.show_volume = False
-        self.show_market_cap = False
         self.crypto_text_color = [255, 215, 0]
         self.crypto_positive_color = [0, 255, 0]
         self.crypto_negative_color = [255, 0, 0]
@@ -200,13 +186,10 @@ class StockConfigManager:
         self.logger.debug("Chart toggle set to: %s", enabled)
     
     def set_scroll_speed(self, speed: float) -> None:
-        """Set the scroll speed (as multiplier from config, 0.5-5.0)."""
-        # Clamp multiplier to valid range per schema
-        self.scroll_speed_multiplier = max(0.5, min(5.0, speed))
-        # Convert to pixels per second
-        self.scroll_speed = self.base_scroll_speed * self.scroll_speed_multiplier
-        self.logger.debug("Scroll speed multiplier set to: %.2f (pixels/sec: %.1f)", 
-                         self.scroll_speed_multiplier, self.scroll_speed)
+        """Set the scroll speed (pixels per frame, 0.5-5.0)."""
+        # Clamp to valid range per schema
+        self.scroll_speed = max(0.5, min(5.0, speed))
+        self.logger.debug("Scroll speed set to: %.2f pixels per frame", self.scroll_speed)
     
     def set_scroll_delay(self, delay: float) -> None:
         """Set the scroll delay."""
@@ -228,8 +211,7 @@ class StockConfigManager:
             'chart_enabled': self.toggle_chart,
             'stocks_count': len(self.stock_symbols),
             'crypto_count': len(self.crypto_symbols),
-            'scroll_speed': self.scroll_speed_multiplier,  # Return multiplier for config compatibility
-            'scroll_speed_px_per_sec': self.scroll_speed,  # Actual pixels per second
+            'scroll_speed': self.scroll_speed,  # Pixels per frame
             'display_duration': self.display_duration
         }
     
