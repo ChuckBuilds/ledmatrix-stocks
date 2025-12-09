@@ -5,7 +5,7 @@ Handles all configuration loading, validation, and runtime changes
 for the stock ticker plugin.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import logging
 
 
@@ -50,6 +50,7 @@ class StockConfigManager:
         self.show_percentage = True
         self.show_volume = False
         self.show_market_cap = False
+        self.stock_display_format = "{symbol}: ${price} ({change}%)"
         
         # Display settings for crypto (loaded from crypto object)
         self.crypto_text_color = [255, 215, 0]  # Default from schema
@@ -57,9 +58,11 @@ class StockConfigManager:
         self.crypto_negative_color = [255, 0, 0]
         self.crypto_show_change = True
         self.crypto_show_percentage = True
+        self.crypto_display_format = "{symbol}: ${price} ({change}%)"
         
         self.stock_symbols = []
         self.crypto_symbols = []
+        self.crypto_update_interval = 600
         
         # API configuration
         self.api_config = {}
@@ -73,50 +76,91 @@ class StockConfigManager:
             # Basic settings
             self.enabled = self.plugin_config.get('enabled', True)
             self.display_duration = self.plugin_config.get('display_duration', 30)
-            # Scroll speed in pixels per frame (matching old manager)
-            self.scroll_speed = self.plugin_config.get('scroll_speed', 1.0)
-            # Clamp to valid range (0.5-5.0) per schema
-            self.scroll_speed = max(0.5, min(5.0, self.scroll_speed))
-            self.scroll_delay = self.plugin_config.get('scroll_delay', 0.01)
-            self.enable_scrolling = self.plugin_config.get('enable_scrolling', True)
-            self.toggle_chart = self.plugin_config.get('toggle_chart', False)
-            self.dynamic_duration = self.plugin_config.get('dynamic_duration', True)
-            self.min_duration = self.plugin_config.get('min_duration', 30)
-            self.max_duration = self.plugin_config.get('max_duration', 300)
-            self.duration_buffer = self.plugin_config.get('duration_buffer', 0.1)
             self.update_interval = self.plugin_config.get('update_interval', 600)
             
-            # Display settings for stocks (top level)
-            self.text_color = self.plugin_config.get('text_color', [255, 255, 255])
-            self.positive_color = self.plugin_config.get('positive_color', [0, 255, 0])
-            self.negative_color = self.plugin_config.get('negative_color', [255, 0, 0])
-            self.show_change = self.plugin_config.get('show_change', True)
-            self.show_percentage = self.plugin_config.get('show_percentage', True)
+            # Display settings (nested under 'display' object)
+            # Support both new format (display.*) and old format (top-level)
+            display_config = self.plugin_config.get('display', {})
+            if display_config:
+                # New format - read from display section
+                self.scroll_speed = display_config.get('scroll_speed', 1.0)
+                self.scroll_delay = display_config.get('scroll_delay', 0.01)
+                self.toggle_chart = display_config.get('toggle_chart', True)
+                self.dynamic_duration = display_config.get('dynamic_duration', True)
+                self.min_duration = display_config.get('min_duration', 30)
+                self.max_duration = display_config.get('max_duration', 300)
+                self.duration_buffer = display_config.get('duration_buffer', 0.1)
+            else:
+                # Old format - check top level for backward compatibility
+                self.scroll_speed = self.plugin_config.get('scroll_speed', 1.0)
+                self.scroll_delay = self.plugin_config.get('scroll_delay', 0.01)
+                self.toggle_chart = self.plugin_config.get('toggle_chart', False)
+                self.dynamic_duration = self.plugin_config.get('dynamic_duration', True)
+                self.min_duration = self.plugin_config.get('min_duration', 30)
+                self.max_duration = self.plugin_config.get('max_duration', 300)
+                self.duration_buffer = self.plugin_config.get('duration_buffer', 0.1)
             
-            # Stock and crypto symbols
-            # Stock symbols are at top level 'symbols' per config schema
-            # Default symbols from schema: ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "META"]
-            self.stock_symbols = self.plugin_config.get('symbols', ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "META"])
+            # Clamp scroll_speed to valid range (0.5-5.0) per schema
+            self.scroll_speed = max(0.5, min(5.0, self.scroll_speed))
+            self.enable_scrolling = self.plugin_config.get('enable_scrolling', True)
+            
+            # Stock configuration (nested under 'stocks' object)
+            # Support both new format (stocks.symbols) and old format (top-level symbols)
+            stocks_config = self.plugin_config.get('stocks', {})
+            if 'symbols' in stocks_config:
+                # New format
+                self.stock_symbols = stocks_config.get('symbols', ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"])
+            else:
+                # Old format - check top level for backward compatibility
+                self.stock_symbols = self.plugin_config.get('symbols', ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"])
+            self.stock_display_format = stocks_config.get('display_format', "{symbol}: ${price} ({change}%)")
             
             # Crypto configuration (nested under 'crypto' object)
+            # Support both new format (crypto.symbols) and old format (crypto.crypto_symbols)
             crypto_config = self.plugin_config.get('crypto', {})
-            if crypto_config.get('enabled', True):
-                # Default crypto symbols from schema: ["BTC", "ETH", "ADA", "SOL", "DOT"]
-                self.crypto_symbols = crypto_config.get('crypto_symbols', ["BTC", "ETH", "ADA", "SOL", "DOT"])
-                # Crypto display settings are under crypto object per schema
+            if crypto_config.get('enabled', False):
+                # Support both new format (symbols) and old format (crypto_symbols)
+                if 'symbols' in crypto_config:
+                    self.crypto_symbols = crypto_config.get('symbols', ["BTC-USD", "ETH-USD"])
+                else:
+                    # Old format - check for crypto_symbols
+                    old_symbols = crypto_config.get('crypto_symbols', ["BTC-USD", "ETH-USD"])
+                    # Convert old format (BTC) to new format (BTC-USD) if needed
+                    self.crypto_symbols = [s if '-USD' in s else f"{s}-USD" for s in old_symbols]
+                self.crypto_display_format = crypto_config.get('display_format', "{symbol}: ${price} ({change}%)")
+                self.crypto_update_interval = crypto_config.get('update_interval', self.update_interval)
+            else:
+                self.crypto_symbols = []
+                self.crypto_display_format = "{symbol}: ${price} ({change}%)"
+                self.crypto_update_interval = self.update_interval
+            
+            # Customization settings (nested under 'customization' object)
+            # Support both new format (customization.stocks.*) and old format (top-level colors)
+            customization = self.plugin_config.get('customization', {})
+            
+            # Stock customization - check new format first, then old format
+            stocks_custom = customization.get('stocks', {})
+            if stocks_custom:
+                self.text_color = stocks_custom.get('text_color', [255, 255, 255])
+                self.positive_color = stocks_custom.get('positive_color', [0, 255, 0])
+                self.negative_color = stocks_custom.get('negative_color', [255, 0, 0])
+            else:
+                # Old format - check top level for backward compatibility
+                self.text_color = self.plugin_config.get('text_color', [255, 255, 255])
+                self.positive_color = self.plugin_config.get('positive_color', [0, 255, 0])
+                self.negative_color = self.plugin_config.get('negative_color', [255, 0, 0])
+            
+            # Crypto customization - check new format first, then old format
+            crypto_custom = customization.get('crypto', {})
+            if crypto_custom:
+                self.crypto_text_color = crypto_custom.get('text_color', [255, 215, 0])
+                self.crypto_positive_color = crypto_custom.get('positive_color', [0, 255, 0])
+                self.crypto_negative_color = crypto_custom.get('negative_color', [255, 0, 0])
+            else:
+                # Old format - check crypto object for backward compatibility
                 self.crypto_text_color = crypto_config.get('text_color', [255, 215, 0])
                 self.crypto_positive_color = crypto_config.get('positive_color', [0, 255, 0])
                 self.crypto_negative_color = crypto_config.get('negative_color', [255, 0, 0])
-                self.crypto_show_change = crypto_config.get('show_change', True)
-                self.crypto_show_percentage = crypto_config.get('show_percentage', True)
-            else:
-                self.crypto_symbols = []
-                # Set defaults even if disabled (for consistency)
-                self.crypto_text_color = [255, 215, 0]
-                self.crypto_positive_color = [0, 255, 0]
-                self.crypto_negative_color = [255, 0, 0]
-                self.crypto_show_change = True
-                self.crypto_show_percentage = True
             
             
             # API configuration
@@ -150,13 +194,16 @@ class StockConfigManager:
         self.negative_color = [255, 0, 0]
         self.show_change = True
         self.show_percentage = True
+        self.stock_display_format = "{symbol}: ${price} ({change}%)"
         self.crypto_text_color = [255, 215, 0]
         self.crypto_positive_color = [0, 255, 0]
         self.crypto_negative_color = [255, 0, 0]
         self.crypto_show_change = True
         self.crypto_show_percentage = True
+        self.crypto_display_format = "{symbol}: ${price} ({change}%)"
         self.stock_symbols = []
         self.crypto_symbols = []
+        self.crypto_update_interval = 600
         self.api_config = {}
         self.timeout = 10
         self.retry_count = 3

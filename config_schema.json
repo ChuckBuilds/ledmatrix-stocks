@@ -6,196 +6,216 @@
   "properties": {
     "enabled": {
       "type": "boolean",
-      "description": "[Global] Enable or disable the stock ticker plugin",
-      "default": true
-    },
-    "display_duration": {
-      "type": "number",
-      "description": "[Global] How long to show the ticker (10-300 seconds)",
-      "minimum": 10,
-      "maximum": 300,
-      "default": 30
-    },
-    "scroll_speed": {
-      "type": "number",
-      "description": "[Global] Scrolling speed in pixels per frame (0.5-5.0)",
-      "minimum": 0.5,
-      "maximum": 5.0,
-      "default": 1.0
-    },
-    "scroll_delay": {
-      "type": "number",
-      "description": "[Global] Delay between scroll steps in seconds",
-      "minimum": 0.001,
-      "maximum": 0.1,
-      "default": 0.01
-    },
-    "enable_scrolling": {
-      "type": "boolean",
-      "description": "[Global] Enable or disable scrolling animation",
-      "default": true
-    },
-    "dynamic_duration": {
-      "type": "boolean",
-      "description": "[Global] Enable dynamic duration based on content width",
-      "default": true
-    },
-    "min_duration": {
-      "type": "number",
-      "description": "[Global] Minimum display duration in seconds",
-      "minimum": 10,
-      "maximum": 300,
-      "default": 30
-    },
-    "max_duration": {
-      "type": "number",
-      "description": "[Global] Maximum display duration in seconds",
-      "minimum": 30,
-      "maximum": 600,
-      "default": 300
-    },
-    "duration_buffer": {
-      "type": "number",
-      "description": "[Global] Buffer percentage for dynamic duration calculation",
-      "minimum": 0.0,
-      "maximum": 1.0,
-      "default": 0.1
-    },
-    "toggle_chart": {
-      "type": "boolean",
-      "description": "[Global] Enable chart display toggle",
+      "description": "Enable or disable the stock ticker plugin",
       "default": false
     },
     "update_interval": {
       "type": "integer",
-      "description": "[Global] Data refresh interval in seconds",
+      "description": "Data refresh interval in seconds",
       "minimum": 60,
       "maximum": 3600,
       "default": 600
     },
-    "symbols": {
-      "type": "array",
-      "description": "[Stock] List of stock symbols to track",
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Z]{1,5}$"
+    "display": {
+      "type": "object",
+      "description": "Display and scrolling settings",
+      "properties": {
+        "scroll_speed": {
+          "type": "number",
+          "description": "Scrolling speed in pixels per frame",
+          "minimum": 0.5,
+          "maximum": 5.0,
+          "default": 1.0
+        },
+        "scroll_delay": {
+          "type": "number",
+          "description": "Delay between scroll steps in seconds",
+          "minimum": 0.001,
+          "maximum": 0.1,
+          "default": 0.01
+        },
+        "toggle_chart": {
+          "type": "boolean",
+          "description": "Enable chart display toggle",
+          "default": true
+        },
+        "dynamic_duration": {
+          "type": "boolean",
+          "description": "Enable dynamic duration based on content width",
+          "default": true
+        },
+        "min_duration": {
+          "type": "number",
+          "description": "Minimum display duration in seconds",
+          "minimum": 10,
+          "maximum": 300,
+          "default": 30
+        },
+        "max_duration": {
+          "type": "number",
+          "description": "Maximum display duration in seconds",
+          "minimum": 30,
+          "maximum": 600,
+          "default": 300
+        },
+        "duration_buffer": {
+          "type": "number",
+          "description": "Buffer percentage for dynamic duration calculation",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "default": 0.1
+        }
       },
-      "default": ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "META"],
-      "maxItems": 20
+      "additionalProperties": false
     },
-    "show_change": {
-      "type": "boolean",
-      "description": "[Stock] Show dollar price change for stocks",
-      "default": true
-    },
-    "show_percentage": {
-      "type": "boolean",
-      "description": "[Stock] Show percentage change for stocks",
-      "default": true
-    },
-    "text_color": {
-      "type": "array",
-      "description": "[Stock] Text color for stocks (RGB)",
-      "items": {
-        "type": "number",
-        "minimum": 0,
-        "maximum": 255
+    "stocks": {
+      "type": "object",
+      "description": "Stock ticker configuration",
+      "properties": {
+        "symbols": {
+          "type": "array",
+          "description": "List of stock symbols to track",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z]{1,5}$"
+          },
+          "default": ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"],
+          "maxItems": 20
+        },
+        "display_format": {
+          "type": "string",
+          "description": "Display format string. Use {symbol}, {price}, {change} as placeholders",
+          "default": "{symbol}: ${price} ({change}%)"
+        }
       },
-      "minItems": 3,
-      "maxItems": 3,
-      "default": [255, 255, 255]
-    },
-    "positive_color": {
-      "type": "array",
-      "description": "[Stock] Positive change color for stocks (RGB)",
-      "items": {
-        "type": "number",
-        "minimum": 0,
-        "maximum": 255
-      },
-      "minItems": 3,
-      "maxItems": 3,
-      "default": [0, 255, 0]
-    },
-    "negative_color": {
-      "type": "array",
-      "description": "[Stock] Negative change color for stocks (RGB)",
-      "items": {
-        "type": "number",
-        "minimum": 0,
-        "maximum": 255
-      },
-      "minItems": 3,
-      "maxItems": 3,
-      "default": [255, 0, 0]
+      "additionalProperties": false
     },
     "crypto": {
       "type": "object",
-      "description": "Cryptocurrency configuration",
+      "description": "Cryptocurrency ticker configuration",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "[Crypto] Enable cryptocurrency tracking",
-          "default": true
+          "description": "Enable cryptocurrency tracking",
+          "default": false
         },
-        "crypto_symbols": {
+        "update_interval": {
+          "type": "integer",
+          "description": "Data refresh interval in seconds",
+          "minimum": 60,
+          "maximum": 3600,
+          "default": 600
+        },
+        "symbols": {
           "type": "array",
-          "description": "[Crypto] List of cryptocurrency symbols to track",
+          "description": "List of cryptocurrency symbols to track",
           "items": {
             "type": "string",
-            "pattern": "^[A-Z]{2,10}$"
+            "pattern": "^[A-Z]{2,10}(-USD)?$"
           },
-          "default": ["BTC", "ETH", "ADA", "SOL", "DOT"],
+          "default": ["BTC-USD", "ETH-USD"],
           "maxItems": 10
         },
-        "show_change": {
-          "type": "boolean",
-          "description": "[Crypto] Show dollar price change for crypto",
-          "default": true
-        },
-        "show_percentage": {
-          "type": "boolean",
-          "description": "[Crypto] Show percentage change for crypto",
-          "default": true
-        },
-        "text_color": {
-          "type": "array",
-          "description": "[Crypto] Text color for crypto (RGB)",
-          "items": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 255
-          },
-          "minItems": 3,
-          "maxItems": 3,
-          "default": [255, 215, 0]
-        },
-        "positive_color": {
-          "type": "array",
-          "description": "[Crypto] Positive change color for crypto (RGB)",
-          "items": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 255
-          },
-          "minItems": 3,
-          "maxItems": 3,
-          "default": [0, 255, 0]
-        },
-        "negative_color": {
-          "type": "array",
-          "description": "[Crypto] Negative change color for crypto (RGB)",
-          "items": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 255
-          },
-          "minItems": 3,
-          "maxItems": 3,
-          "default": [255, 0, 0]
+        "display_format": {
+          "type": "string",
+          "description": "Display format string. Use {symbol}, {price}, {change} as placeholders",
+          "default": "{symbol}: ${price} ({change}%)"
         }
       },
       "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "customization": {
+      "type": "object",
+      "description": "Display customization options (colors, fonts, etc.)",
+      "properties": {
+        "stocks": {
+          "type": "object",
+          "description": "Stock display customization",
+          "properties": {
+            "text_color": {
+              "type": "array",
+              "description": "Text color (RGB)",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "default": [255, 255, 255]
+            },
+            "positive_color": {
+              "type": "array",
+              "description": "Positive change color (RGB)",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "default": [0, 255, 0]
+            },
+            "negative_color": {
+              "type": "array",
+              "description": "Negative change color (RGB)",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "default": [255, 0, 0]
+            }
+          },
+          "additionalProperties": false
+        },
+        "crypto": {
+          "type": "object",
+          "description": "Crypto display customization",
+          "properties": {
+            "text_color": {
+              "type": "array",
+              "description": "Text color (RGB)",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "default": [255, 215, 0]
+            },
+            "positive_color": {
+              "type": "array",
+              "description": "Positive change color (RGB)",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "default": [0, 255, 0]
+            },
+            "negative_color": {
+              "type": "array",
+              "description": "Negative change color (RGB)",
+              "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "minItems": 3,
+              "maxItems": 3,
+              "default": [255, 0, 0]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
       "additionalProperties": false
     }
   },
