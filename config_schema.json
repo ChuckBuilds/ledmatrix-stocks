@@ -32,7 +32,7 @@
           "description": "Delay between scroll steps in seconds",
           "minimum": 0.001,
           "maximum": 0.1,
-          "default": 0.01
+          "default": 0.02
         },
         "toggle_chart": {
           "type": "boolean",
@@ -72,6 +72,11 @@
       "type": "object",
       "description": "Stock ticker configuration",
       "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable stock tracking",
+          "default": true
+        },
         "symbols": {
           "type": "array",
           "description": "List of stock symbols to track",
@@ -88,6 +93,7 @@
           "default": "{symbol}: ${price} ({change}%)"
         }
       },
+      "required": ["enabled"],
       "additionalProperties": false
     },
     "crypto": {

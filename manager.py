@@ -7,7 +7,7 @@ into focused modules for better maintainability.
 """
 
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.plugin_system.base_plugin import BasePlugin
 
@@ -58,6 +58,7 @@ class StockTickerPlugin(BasePlugin):
         self.stock_data = {}
         self.current_stock_index = 0
         self.scroll_complete = False
+        self._has_scrolled = False
         
         # Expose enable_scrolling for display controller FPS detection
         self.enable_scrolling = self.config_manager.enable_scrolling
@@ -71,6 +72,14 @@ class StockTickerPlugin(BasePlugin):
         pixels_per_second = self.config_manager.scroll_speed / self.config_manager.scroll_delay if self.config_manager.scroll_delay > 0 else self.config_manager.scroll_speed * 100
         self.scroll_helper.set_scroll_speed(pixels_per_second)
         self.scroll_helper.set_scroll_delay(self.config_manager.scroll_delay)
+        
+        # Configure dynamic duration settings
+        self.scroll_helper.set_dynamic_duration_settings(
+            enabled=self.config_manager.dynamic_duration,
+            min_duration=int(self.config_manager.min_duration),
+            max_duration=int(self.config_manager.max_duration),
+            buffer=self.config_manager.duration_buffer
+        )
         
         self.logger.info("Stock ticker plugin initialized - %dx%d", 
                         self.display_width, self.display_height)
@@ -117,6 +126,8 @@ class StockTickerPlugin(BasePlugin):
         
         if force_clear:
             self.scroll_helper.reset_scroll()
+            self._has_scrolled = False
+            self.scroll_complete = False
         
         # Signal scrolling state
         self.display_manager.set_scrolling_state(True)
@@ -135,10 +146,12 @@ class StockTickerPlugin(BasePlugin):
         # Log frame rate (less frequently to avoid spam)
         self.scroll_helper.log_frame_rate()
         
-        # Check if scroll is complete (wrapped around)
-        if self.scroll_helper.scroll_position == 0:
+        # Check if scroll is complete using ScrollHelper's method
+        if hasattr(self.scroll_helper, 'is_scroll_complete'):
+            self.scroll_complete = self.scroll_helper.is_scroll_complete()
+        elif self.scroll_helper.scroll_position == 0 and self._has_scrolled:
+            # Fallback: check if we've wrapped around (position is 0 after scrolling)
             self.scroll_complete = True
-            self._smooth_scroll_position = 0.0  # Reset smooth position
     
     def _display_static(self, force_clear: bool = False) -> None:
         """Display stocks in static mode - one at a time without scrolling."""
@@ -195,12 +208,85 @@ class StockTickerPlugin(BasePlugin):
             self.logger.error("Error showing error state: %s", e)
     
     def get_display_duration(self) -> float:
-        """Get the display duration in seconds."""
+        """
+        Get the display duration in seconds.
+        
+        If dynamic duration is enabled and scroll helper has calculated a duration,
+        use that. Otherwise use the static display_duration.
+        """
+        # If dynamic duration is enabled and scroll helper has calculated a duration, use it
+        if (self.config_manager.dynamic_duration and 
+            hasattr(self.scroll_helper, 'calculated_duration') and 
+            self.scroll_helper.calculated_duration > 0):
+            return float(self.scroll_helper.calculated_duration)
+        
+        # Otherwise use static duration
         return self.config_manager.get_display_duration()
     
     def get_dynamic_duration(self) -> int:
         """Get the dynamic duration setting."""
         return self.config_manager.get_dynamic_duration()
+    
+    def supports_dynamic_duration(self) -> bool:
+        """
+        Determine whether this plugin should use dynamic display durations.
+        
+        Returns True if dynamic_duration is enabled in the display config.
+        """
+        return bool(self.config_manager.dynamic_duration)
+    
+    def get_dynamic_duration_cap(self) -> Optional[float]:
+        """
+        Return the maximum duration (in seconds) the controller should wait for
+        this plugin to complete its display cycle when using dynamic duration.
+        
+        Returns the max_duration from config, or None if not set.
+        """
+        if not self.config_manager.dynamic_duration:
+            return None
+        
+        max_duration = self.config_manager.max_duration
+        if max_duration and max_duration > 0:
+            return float(max_duration)
+        return None
+    
+    def is_cycle_complete(self) -> bool:
+        """
+        Report whether the plugin has shown a full cycle of content.
+        
+        For scrolling content, this checks if the scroll has completed one full cycle.
+        """
+        if not self.config_manager.dynamic_duration:
+            # If dynamic duration is disabled, always report complete
+            return True
+        
+        if not self.config_manager.enable_scrolling:
+            # For static mode, cycle is complete after showing all stocks once
+            if not self.stock_data:
+                return True
+            symbols = list(self.stock_data.keys())
+            return self.current_stock_index >= len(symbols)
+        
+        # For scrolling mode, check if scroll has completed
+        if hasattr(self.scroll_helper, 'is_scroll_complete'):
+            return self.scroll_helper.is_scroll_complete()
+        
+        # Fallback: check if scroll position has wrapped around
+        return self.scroll_complete
+    
+    def reset_cycle_state(self) -> None:
+        """
+        Reset any internal counters/state related to cycle tracking.
+        
+        Called by the display controller before beginning a new dynamic-duration
+        session. Resets scroll position and stock index.
+        """
+        super().reset_cycle_state()
+        self.scroll_complete = False
+        self.current_stock_index = 0
+        self._has_scrolled = False
+        if hasattr(self.scroll_helper, 'reset_scroll'):
+            self.scroll_helper.reset_scroll()
     
     def get_info(self) -> Dict[str, Any]:
         """Get plugin information."""

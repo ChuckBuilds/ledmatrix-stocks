@@ -33,7 +33,7 @@ class StockConfigManager:
         self.display_duration = 30
         # Scroll speed in pixels per frame (matching old manager)
         self.scroll_speed = 1.0  # Pixels per frame (default 1)
-        self.scroll_delay = 0.01  # Seconds between frames (default 0.01)
+        self.scroll_delay = 0.02  # Seconds between frames (default 0.02)
         self.enable_scrolling = True
         self.toggle_chart = False
         self.dynamic_duration = True
@@ -61,6 +61,7 @@ class StockConfigManager:
         self.crypto_display_format = "{symbol}: ${price} ({change}%)"
         
         self.stock_symbols = []
+        self.stocks_enabled = True  # Default to enabled for backward compatibility
         self.crypto_symbols = []
         self.crypto_update_interval = 600
         
@@ -84,7 +85,7 @@ class StockConfigManager:
             if display_config:
                 # New format - read from display section
                 self.scroll_speed = display_config.get('scroll_speed', 1.0)
-                self.scroll_delay = display_config.get('scroll_delay', 0.01)
+                self.scroll_delay = display_config.get('scroll_delay', 0.02)
                 self.toggle_chart = display_config.get('toggle_chart', True)
                 self.dynamic_duration = display_config.get('dynamic_duration', True)
                 self.min_duration = display_config.get('min_duration', 30)
@@ -93,7 +94,7 @@ class StockConfigManager:
             else:
                 # Old format - check top level for backward compatibility
                 self.scroll_speed = self.plugin_config.get('scroll_speed', 1.0)
-                self.scroll_delay = self.plugin_config.get('scroll_delay', 0.01)
+                self.scroll_delay = self.plugin_config.get('scroll_delay', 0.02)
                 self.toggle_chart = self.plugin_config.get('toggle_chart', False)
                 self.dynamic_duration = self.plugin_config.get('dynamic_duration', True)
                 self.min_duration = self.plugin_config.get('min_duration', 30)
@@ -107,13 +108,20 @@ class StockConfigManager:
             # Stock configuration (nested under 'stocks' object)
             # Support both new format (stocks.symbols) and old format (top-level symbols)
             stocks_config = self.plugin_config.get('stocks', {})
-            if 'symbols' in stocks_config:
-                # New format
-                self.stock_symbols = stocks_config.get('symbols', ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"])
+            self.stocks_enabled = stocks_config.get('enabled', True)  # Default to True for backward compatibility
+            
+            if self.stocks_enabled:
+                if 'symbols' in stocks_config:
+                    # New format
+                    self.stock_symbols = stocks_config.get('symbols', ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"])
+                else:
+                    # Old format - check top level for backward compatibility
+                    self.stock_symbols = self.plugin_config.get('symbols', ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"])
+                self.stock_display_format = stocks_config.get('display_format', "{symbol}: ${price} ({change}%)")
             else:
-                # Old format - check top level for backward compatibility
-                self.stock_symbols = self.plugin_config.get('symbols', ["ASTS", "SCHD", "INTC", "NVDA", "T", "VOO", "SMCI"])
-            self.stock_display_format = stocks_config.get('display_format', "{symbol}: ${price} ({change}%)")
+                # Stocks disabled - clear symbols
+                self.stock_symbols = []
+                self.stock_display_format = "{symbol}: ${price} ({change}%)"
             
             # Crypto configuration (nested under 'crypto' object)
             # Support both new format (crypto.symbols) and old format (crypto.crypto_symbols)
@@ -141,26 +149,26 @@ class StockConfigManager:
             # Stock customization - check new format first, then old format
             stocks_custom = customization.get('stocks', {})
             if stocks_custom:
-                self.text_color = stocks_custom.get('text_color', [255, 255, 255])
-                self.positive_color = stocks_custom.get('positive_color', [0, 255, 0])
-                self.negative_color = stocks_custom.get('negative_color', [255, 0, 0])
+                self.text_color = [int(float(c)) for c in stocks_custom.get('text_color', [255, 255, 255])]
+                self.positive_color = [int(float(c)) for c in stocks_custom.get('positive_color', [0, 255, 0])]
+                self.negative_color = [int(float(c)) for c in stocks_custom.get('negative_color', [255, 0, 0])]
             else:
                 # Old format - check top level for backward compatibility
-                self.text_color = self.plugin_config.get('text_color', [255, 255, 255])
-                self.positive_color = self.plugin_config.get('positive_color', [0, 255, 0])
-                self.negative_color = self.plugin_config.get('negative_color', [255, 0, 0])
+                self.text_color = [int(float(c)) for c in self.plugin_config.get('text_color', [255, 255, 255])]
+                self.positive_color = [int(float(c)) for c in self.plugin_config.get('positive_color', [0, 255, 0])]
+                self.negative_color = [int(float(c)) for c in self.plugin_config.get('negative_color', [255, 0, 0])]
             
             # Crypto customization - check new format first, then old format
             crypto_custom = customization.get('crypto', {})
             if crypto_custom:
-                self.crypto_text_color = crypto_custom.get('text_color', [255, 215, 0])
-                self.crypto_positive_color = crypto_custom.get('positive_color', [0, 255, 0])
-                self.crypto_negative_color = crypto_custom.get('negative_color', [255, 0, 0])
+                self.crypto_text_color = [int(float(c)) for c in crypto_custom.get('text_color', [255, 215, 0])]
+                self.crypto_positive_color = [int(float(c)) for c in crypto_custom.get('positive_color', [0, 255, 0])]
+                self.crypto_negative_color = [int(float(c)) for c in crypto_custom.get('negative_color', [255, 0, 0])]
             else:
                 # Old format - check crypto object for backward compatibility
-                self.crypto_text_color = crypto_config.get('text_color', [255, 215, 0])
-                self.crypto_positive_color = crypto_config.get('positive_color', [0, 255, 0])
-                self.crypto_negative_color = crypto_config.get('negative_color', [255, 0, 0])
+                self.crypto_text_color = [int(float(c)) for c in crypto_config.get('text_color', [255, 215, 0])]
+                self.crypto_positive_color = [int(float(c)) for c in crypto_config.get('positive_color', [0, 255, 0])]
+                self.crypto_negative_color = [int(float(c)) for c in crypto_config.get('negative_color', [255, 0, 0])]
             
             
             # API configuration
@@ -181,7 +189,7 @@ class StockConfigManager:
         self.enabled = True
         self.display_duration = 30
         self.scroll_speed = 1.0  # Pixels per frame
-        self.scroll_delay = 0.01
+        self.scroll_delay = 0.02
         self.enable_scrolling = True
         self.toggle_chart = False
         self.dynamic_duration = True
@@ -202,6 +210,7 @@ class StockConfigManager:
         self.crypto_show_percentage = True
         self.crypto_display_format = "{symbol}: ${price} ({change}%)"
         self.stock_symbols = []
+        self.stocks_enabled = True
         self.crypto_symbols = []
         self.crypto_update_interval = 600
         self.api_config = {}
@@ -256,6 +265,7 @@ class StockConfigManager:
             'enabled': self.enabled,
             'scrolling': self.enable_scrolling,
             'chart_enabled': self.toggle_chart,
+            'stocks_enabled': self.stocks_enabled,
             'stocks_count': len(self.stock_symbols),
             'crypto_count': len(self.crypto_symbols),
             'scroll_speed': self.scroll_speed,  # Pixels per frame
@@ -292,8 +302,14 @@ class StockConfigManager:
                     return False
                 
                 for component in color:
-                    if not isinstance(component, int) or not (0 <= component <= 255):
-                        self.logger.error("%s components must be integers between 0 and 255", color_name)
+                    # Accept both int and float, convert to int for validation
+                    try:
+                        component_int = int(float(component))
+                        if not (0 <= component_int <= 255):
+                            self.logger.error("%s components must be between 0 and 255", color_name)
+                            return False
+                    except (ValueError, TypeError):
+                        self.logger.error("%s components must be numeric values between 0 and 255", color_name)
                         return False
             
             self.logger.debug("Configuration validation passed")
