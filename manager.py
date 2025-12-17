@@ -195,7 +195,9 @@ class StockTickerPlugin(BasePlugin):
                 self.scroll_helper.clear_cache()
             
         except Exception as e:
+            import traceback
             self.logger.error("Error creating scrolling display: %s", e)
+            self.logger.error("Traceback: %s", traceback.format_exc())
             self.scroll_helper.clear_cache()
     
     def _show_error_state(self):

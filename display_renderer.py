@@ -224,7 +224,7 @@ class StockDisplayRenderer:
         # Only calculate change_bbox if change_text is not empty
         if change_text:
             change_bbox = draw.textbbox((0, 0), change_text, font=change_font)
-            change_height = change_bbox[3] - change_bbox[1]
+            change_height = int(change_bbox[3] - change_bbox[1])
         else:
             change_bbox = (0, 0, 0, 0)
             change_height = 0
@@ -234,10 +234,9 @@ class StockDisplayRenderer:
         text_gap = 2 if self.toggle_chart else 1
         # Only add change height and gap if change is shown
         change_gap = text_gap if change_text else 0
-        total_text_height = (symbol_bbox[3] - symbol_bbox[1]) + \
-                           (price_bbox[3] - price_bbox[1]) + \
-                           change_height + \
-                           (text_gap + change_gap)  # Account for gaps between elements
+        symbol_height = int(symbol_bbox[3] - symbol_bbox[1])
+        price_height = int(price_bbox[3] - price_bbox[1])
+        total_text_height = symbol_height + price_height + change_height + (text_gap + change_gap)  # Account for gaps between elements
         
         # Calculate starting y position to center all text
         start_y = int((height - total_text_height) // 2)
@@ -252,21 +251,23 @@ class StockDisplayRenderer:
             column_x = int(width / 2.2)
         
         # Draw symbol
-        symbol_width = symbol_bbox[2] - symbol_bbox[0]
-        symbol_x = int(column_x - (symbol_width // 2))
+        symbol_width = int(symbol_bbox[2] - symbol_bbox[0])
+        symbol_x = int(column_x - (symbol_width / 2))
         draw.text((symbol_x, start_y), symbol_text, font=symbol_font, fill=symbol_color)
         
         # Draw price
-        price_width = price_bbox[2] - price_bbox[0]
-        price_x = int(column_x - (price_width // 2))
-        price_y = int(start_y + (symbol_bbox[3] - symbol_bbox[1]) + text_gap)  # Adjusted gap
+        price_width = int(price_bbox[2] - price_bbox[0])
+        price_x = int(column_x - (price_width / 2))
+        symbol_height = int(symbol_bbox[3] - symbol_bbox[1])
+        price_y = int(start_y + symbol_height + text_gap)  # Adjusted gap
         draw.text((price_x, price_y), price_text, font=price_font, fill=price_color)
         
         # Draw change with color based on value (only if change_text is not empty)
         if change_text:
-            change_width = change_bbox[2] - change_bbox[0]
-            change_x = int(column_x - (change_width // 2))
-            change_y = int(price_y + (price_bbox[3] - price_bbox[1]) + text_gap)  # Adjusted gap
+            change_width = int(change_bbox[2] - change_bbox[0])
+            change_x = int(column_x - (change_width / 2))
+            price_height = int(price_bbox[3] - price_bbox[1])
+            change_y = int(price_y + price_height + text_gap)  # Adjusted gap
             draw.text((change_x, change_y), change_text, font=change_font, fill=change_color)
         
         # Draw mini chart on the right only if toggle_chart is enabled
@@ -346,19 +347,19 @@ class StockDisplayRenderer:
         center_x = int(self.display_width) // 2
         
         # Draw symbol
-        symbol_width = symbol_bbox[2] - symbol_bbox[0]
-        symbol_x = center_x - (symbol_width // 2)
+        symbol_width = int(symbol_bbox[2] - symbol_bbox[0])
+        symbol_x = int(center_x - (symbol_width / 2))
         draw.text((symbol_x, 5), symbol_text, font=symbol_font, fill=symbol_color)
         
         # Draw price
-        price_width = price_bbox[2] - price_bbox[0]
-        price_x = center_x - (price_width // 2)
+        price_width = int(price_bbox[2] - price_bbox[0])
+        price_x = int(center_x - (price_width / 2))
         draw.text((price_x, 15), price_text, font=price_font, fill=price_color)
         
         # Draw change (only if change_text is not empty)
         if change_text:
-            change_width = change_bbox[2] - change_bbox[0]
-            change_x = center_x - (change_width // 2)
+            change_width = int(change_bbox[2] - change_bbox[0])
+            change_x = int(center_x - (change_width / 2))
             draw.text((change_x, 25), change_text, font=change_font, fill=change_color)
         
         return image
