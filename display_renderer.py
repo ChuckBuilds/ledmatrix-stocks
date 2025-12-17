@@ -34,45 +34,60 @@ class StockDisplayRenderer:
         
         # Stock colors - new format: customization.stocks.symbol/price/price_delta
         # Old format fallback: top-level text_color, positive_color, negative_color
+        # Ensure all color values are integers (RGB values from config might be floats)
         if stocks_custom.get('symbol') and 'text_color' in stocks_custom['symbol']:
             # New format: separate colors for symbol and price
-            self.symbol_text_color = tuple(stocks_custom['symbol'].get('text_color', [255, 255, 255]))
-            self.price_text_color = tuple(stocks_custom.get('price', {}).get('text_color', [255, 255, 255]))
+            symbol_color_list = stocks_custom['symbol'].get('text_color', [255, 255, 255])
+            price_color_list = stocks_custom.get('price', {}).get('text_color', [255, 255, 255])
+            self.symbol_text_color = tuple(int(c) for c in symbol_color_list)
+            self.price_text_color = tuple(int(c) for c in price_color_list)
         else:
             # Old format: shared text_color for symbol and price
-            old_text_color = tuple(config.get('text_color', [255, 255, 255]))
+            old_text_color_list = config.get('text_color', [255, 255, 255])
+            old_text_color = tuple(int(c) for c in old_text_color_list)
             self.symbol_text_color = old_text_color
             self.price_text_color = old_text_color
         
         price_delta_custom = stocks_custom.get('price_delta', {})
         if price_delta_custom:
-            self.positive_color = tuple(price_delta_custom.get('positive_color', [0, 255, 0]))
-            self.negative_color = tuple(price_delta_custom.get('negative_color', [255, 0, 0]))
+            positive_color_list = price_delta_custom.get('positive_color', [0, 255, 0])
+            negative_color_list = price_delta_custom.get('negative_color', [255, 0, 0])
+            self.positive_color = tuple(int(c) for c in positive_color_list)
+            self.negative_color = tuple(int(c) for c in negative_color_list)
         else:
             # Old format fallback
-            self.positive_color = tuple(config.get('positive_color', [0, 255, 0]))
-            self.negative_color = tuple(config.get('negative_color', [255, 0, 0]))
+            positive_color_list = config.get('positive_color', [0, 255, 0])
+            negative_color_list = config.get('negative_color', [255, 0, 0])
+            self.positive_color = tuple(int(c) for c in positive_color_list)
+            self.negative_color = tuple(int(c) for c in negative_color_list)
         
         # Crypto colors - new format: customization.crypto.symbol/price/price_delta
         # Old format fallback: customization.crypto.text_color, etc.
         if crypto_custom.get('symbol') and 'text_color' in crypto_custom['symbol']:
             # New format: separate colors for symbol and price
-            self.crypto_symbol_text_color = tuple(crypto_custom['symbol'].get('text_color', [255, 215, 0]))
-            self.crypto_price_text_color = tuple(crypto_custom.get('price', {}).get('text_color', [255, 215, 0]))
+            crypto_symbol_color_list = crypto_custom['symbol'].get('text_color', [255, 215, 0])
+            crypto_price_color_list = crypto_custom.get('price', {}).get('text_color', [255, 215, 0])
+            self.crypto_symbol_text_color = tuple(int(c) for c in crypto_symbol_color_list)
+            self.crypto_price_text_color = tuple(int(c) for c in crypto_price_color_list)
         else:
             # Old format: shared text_color for symbol and price
-            old_crypto_text_color = tuple(crypto_custom.get('text_color', [255, 215, 0]))
+            old_crypto_text_color_list = crypto_custom.get('text_color', [255, 215, 0])
+            old_crypto_text_color = tuple(int(c) for c in old_crypto_text_color_list)
             self.crypto_symbol_text_color = old_crypto_text_color
             self.crypto_price_text_color = old_crypto_text_color
         
         crypto_price_delta_custom = crypto_custom.get('price_delta', {})
         if crypto_price_delta_custom:
-            self.crypto_positive_color = tuple(crypto_price_delta_custom.get('positive_color', [0, 255, 0]))
-            self.crypto_negative_color = tuple(crypto_price_delta_custom.get('negative_color', [255, 0, 0]))
+            crypto_positive_color_list = crypto_price_delta_custom.get('positive_color', [0, 255, 0])
+            crypto_negative_color_list = crypto_price_delta_custom.get('negative_color', [255, 0, 0])
+            self.crypto_positive_color = tuple(int(c) for c in crypto_positive_color_list)
+            self.crypto_negative_color = tuple(int(c) for c in crypto_negative_color_list)
         else:
             # Old format fallback
-            self.crypto_positive_color = tuple(crypto_custom.get('positive_color', [0, 255, 0]))
-            self.crypto_negative_color = tuple(crypto_custom.get('negative_color', [255, 0, 0]))
+            crypto_positive_color_list = crypto_custom.get('positive_color', [0, 255, 0])
+            crypto_negative_color_list = crypto_custom.get('negative_color', [255, 0, 0])
+            self.crypto_positive_color = tuple(int(c) for c in crypto_positive_color_list)
+            self.crypto_negative_color = tuple(int(c) for c in crypto_negative_color_list)
         
         # Initialize helpers
         self.logo_helper = LogoHelper(display_width, display_height, logger=logger)
