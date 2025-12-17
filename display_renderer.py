@@ -381,8 +381,8 @@ class StockDisplayRenderer:
         
         # Calculate spacing - match old stock_manager exactly
         # Old code: stock_gap = width // 6, element_gap = width // 8
-        stock_gap = width // 6  # Reduced gap between stocks
-        element_gap = width // 8  # Reduced gap between elements within a stock
+        stock_gap = int(width // 6)  # Reduced gap between stocks
+        element_gap = int(width // 8)  # Reduced gap between elements within a stock
         
         # Calculate total width - match old stock_manager calculation
         # Old code: total_width = sum(width * 2 for _ in symbols) + stock_gap * (len(symbols) - 1) + element_gap * (len(symbols) * 2 - 1)
@@ -448,10 +448,10 @@ class StockDisplayRenderer:
         # Chart dimensions - match old stock_manager exactly
         # Old code: chart_width = int(width // 2.5), chart_height = height // 1.5
         # Ensure all dimensions are integers
-        chart_width = int(width // 2.5)  # Reduced from width//2.5 to prevent overlap
-        chart_height = int(height // 1.5)
+        chart_width = int(width / 2.5)  # Reduced from width//2.5 to prevent overlap
+        chart_height = int(height / 1.5)
         chart_x = int(width - chart_width - 4)  # 4px margin from right edge
-        chart_y = int((height - chart_height) // 2)
+        chart_y = int((height - chart_height) / 2)
         
         # Extract prices - match old stock_manager exactly
         prices = [point['price'] for point in price_history if 'price' in point]
@@ -471,7 +471,7 @@ class StockDisplayRenderer:
         
         if price_range == 0:
             # All prices are the same, draw a horizontal line
-            y = chart_y + chart_height // 2
+            y = int(chart_y + chart_height / 2)
             draw.line([(chart_x, y), (chart_x + chart_width, y)], fill=color, width=1)
             return
         
@@ -479,7 +479,7 @@ class StockDisplayRenderer:
         # Ensure all coordinates are integers
         points = []
         for i, price in enumerate(prices):
-            x = int(chart_x + (i * chart_width) // (len(prices) - 1))
+            x = int(chart_x + (i * chart_width) / (len(prices) - 1))
             y = int(chart_y + chart_height - int(((price - min_price) / price_range) * chart_height))
             points.append((x, y))
         
