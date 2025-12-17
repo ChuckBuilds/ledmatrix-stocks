@@ -139,41 +139,134 @@
           "type": "object",
           "description": "Stock display customization",
           "properties": {
-            "text_color": {
-              "type": "array",
-              "description": "Text color (RGB)",
-              "items": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 255
+            "symbol": {
+              "type": "object",
+              "description": "Symbol text customization (font and color)",
+              "properties": {
+                "font_size": {
+                  "type": "integer",
+                  "description": "Font size for symbol text",
+                  "minimum": 4,
+                  "maximum": 16,
+                  "default": 8
+                },
+                "font": {
+                  "type": "string",
+                  "description": "Font file to use for symbol text",
+                  "enum": [
+                    "PressStart2P-Regular.ttf",
+                    "4x6-font.ttf",
+                    "5by7.regular.ttf",
+                    "5x7.bdf",
+                    "4x6.bdf",
+                    "cozette.bdf"
+                  ],
+                  "default": "PressStart2P-Regular.ttf"
+                },
+                "text_color": {
+                  "type": "array",
+                  "description": "Text color for symbol (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [255, 255, 255]
+                }
               },
-              "minItems": 3,
-              "maxItems": 3,
-              "default": [255, 255, 255]
+              "additionalProperties": false
             },
-            "positive_color": {
-              "type": "array",
-              "description": "Positive change color (RGB)",
-              "items": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 255
+            "price": {
+              "type": "object",
+              "description": "Price text customization (font and color)",
+              "properties": {
+                "font_size": {
+                  "type": "integer",
+                  "description": "Font size for price text",
+                  "minimum": 4,
+                  "maximum": 16,
+                  "default": 8
+                },
+                "font": {
+                  "type": "string",
+                  "description": "Font file to use for price text",
+                  "enum": [
+                    "PressStart2P-Regular.ttf",
+                    "4x6-font.ttf",
+                    "5by7.regular.ttf",
+                    "5x7.bdf",
+                    "4x6.bdf",
+                    "cozette.bdf"
+                  ],
+                  "default": "PressStart2P-Regular.ttf"
+                },
+                "text_color": {
+                  "type": "array",
+                  "description": "Text color for price (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [255, 255, 255]
+                }
               },
-              "minItems": 3,
-              "maxItems": 3,
-              "default": [0, 255, 0]
+              "additionalProperties": false
             },
-            "negative_color": {
-              "type": "array",
-              "description": "Negative change color (RGB)",
-              "items": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 255
+            "price_delta": {
+              "type": "object",
+              "description": "Price change/percentage text customization (font and colors)",
+              "properties": {
+                "font_size": {
+                  "type": "integer",
+                  "description": "Font size for price delta text",
+                  "minimum": 4,
+                  "maximum": 16,
+                  "default": 8
+                },
+                "font": {
+                  "type": "string",
+                  "description": "Font file to use for price delta text",
+                  "enum": [
+                    "PressStart2P-Regular.ttf",
+                    "4x6-font.ttf",
+                    "5by7.regular.ttf",
+                    "5x7.bdf",
+                    "4x6.bdf",
+                    "cozette.bdf"
+                  ],
+                  "default": "PressStart2P-Regular.ttf"
+                },
+                "positive_color": {
+                  "type": "array",
+                  "description": "Color for positive changes (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [0, 255, 0]
+                },
+                "negative_color": {
+                  "type": "array",
+                  "description": "Color for negative changes (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [255, 0, 0]
+                }
               },
-              "minItems": 3,
-              "maxItems": 3,
-              "default": [255, 0, 0]
+              "additionalProperties": false
             }
           },
           "additionalProperties": false
@@ -182,41 +275,134 @@
           "type": "object",
           "description": "Crypto display customization",
           "properties": {
-            "text_color": {
-              "type": "array",
-              "description": "Text color (RGB)",
-              "items": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 255
+            "symbol": {
+              "type": "object",
+              "description": "Symbol text customization (font and color)",
+              "properties": {
+                "font_size": {
+                  "type": "integer",
+                  "description": "Font size for symbol text",
+                  "minimum": 4,
+                  "maximum": 16,
+                  "default": 8
+                },
+                "font": {
+                  "type": "string",
+                  "description": "Font file to use for symbol text",
+                  "enum": [
+                    "PressStart2P-Regular.ttf",
+                    "4x6-font.ttf",
+                    "5by7.regular.ttf",
+                    "5x7.bdf",
+                    "4x6.bdf",
+                    "cozette.bdf"
+                  ],
+                  "default": "PressStart2P-Regular.ttf"
+                },
+                "text_color": {
+                  "type": "array",
+                  "description": "Text color for symbol (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [255, 215, 0]
+                }
               },
-              "minItems": 3,
-              "maxItems": 3,
-              "default": [255, 215, 0]
+              "additionalProperties": false
             },
-            "positive_color": {
-              "type": "array",
-              "description": "Positive change color (RGB)",
-              "items": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 255
+            "price": {
+              "type": "object",
+              "description": "Price text customization (font and color)",
+              "properties": {
+                "font_size": {
+                  "type": "integer",
+                  "description": "Font size for price text",
+                  "minimum": 4,
+                  "maximum": 16,
+                  "default": 8
+                },
+                "font": {
+                  "type": "string",
+                  "description": "Font file to use for price text",
+                  "enum": [
+                    "PressStart2P-Regular.ttf",
+                    "4x6-font.ttf",
+                    "5by7.regular.ttf",
+                    "5x7.bdf",
+                    "4x6.bdf",
+                    "cozette.bdf"
+                  ],
+                  "default": "PressStart2P-Regular.ttf"
+                },
+                "text_color": {
+                  "type": "array",
+                  "description": "Text color for price (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [255, 215, 0]
+                }
               },
-              "minItems": 3,
-              "maxItems": 3,
-              "default": [0, 255, 0]
+              "additionalProperties": false
             },
-            "negative_color": {
-              "type": "array",
-              "description": "Negative change color (RGB)",
-              "items": {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 255
+            "price_delta": {
+              "type": "object",
+              "description": "Price change/percentage text customization (font and colors)",
+              "properties": {
+                "font_size": {
+                  "type": "integer",
+                  "description": "Font size for price delta text",
+                  "minimum": 4,
+                  "maximum": 16,
+                  "default": 8
+                },
+                "font": {
+                  "type": "string",
+                  "description": "Font file to use for price delta text",
+                  "enum": [
+                    "PressStart2P-Regular.ttf",
+                    "4x6-font.ttf",
+                    "5by7.regular.ttf",
+                    "5x7.bdf",
+                    "4x6.bdf",
+                    "cozette.bdf"
+                  ],
+                  "default": "PressStart2P-Regular.ttf"
+                },
+                "positive_color": {
+                  "type": "array",
+                  "description": "Color for positive changes (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [0, 255, 0]
+                },
+                "negative_color": {
+                  "type": "array",
+                  "description": "Color for negative changes (RGB)",
+                  "items": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "minItems": 3,
+                  "maxItems": 3,
+                  "default": [255, 0, 0]
+                }
               },
-              "minItems": 3,
-              "maxItems": 3,
-              "default": [255, 0, 0]
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

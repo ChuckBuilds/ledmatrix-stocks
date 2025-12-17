@@ -5,8 +5,9 @@ Handles all display creation, layout, and rendering logic for both
 scrolling and static display modes.
 """
 
+import os
 from typing import Dict, Any, List, Optional, Tuple
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 
 # Import common utilities
 from src.common import ScrollHelper, LogoHelper, TextHelper
@@ -24,18 +25,54 @@ class StockDisplayRenderer:
         
         # Display configuration
         self.toggle_chart = config.get('toggle_chart', True)
-        self.font_size = config.get('font_size', 10)
         
-        # Colors for stocks (top level)
-        self.text_color = tuple(config.get('text_color', [255, 255, 255]))
-        self.positive_color = tuple(config.get('positive_color', [0, 255, 0]))
-        self.negative_color = tuple(config.get('negative_color', [255, 0, 0]))
+        # Load colors from customization structure (organized by element: symbol, price, price_delta)
+        # Support both new format (customization.stocks.*) and old format (top-level) for backwards compatibility
+        customization = config.get('customization', {})
+        stocks_custom = customization.get('stocks', {})
+        crypto_custom = customization.get('crypto', {})
         
-        # Colors for crypto (nested under 'crypto' object per schema)
-        crypto_config = config.get('crypto', {})
-        self.crypto_text_color = tuple(crypto_config.get('text_color', [255, 215, 0]))
-        self.crypto_positive_color = tuple(crypto_config.get('positive_color', [0, 255, 0]))
-        self.crypto_negative_color = tuple(crypto_config.get('negative_color', [255, 0, 0]))
+        # Stock colors - new format: customization.stocks.symbol/price/price_delta
+        # Old format fallback: top-level text_color, positive_color, negative_color
+        if stocks_custom.get('symbol') and 'text_color' in stocks_custom['symbol']:
+            # New format: separate colors for symbol and price
+            self.symbol_text_color = tuple(stocks_custom['symbol'].get('text_color', [255, 255, 255]))
+            self.price_text_color = tuple(stocks_custom.get('price', {}).get('text_color', [255, 255, 255]))
+        else:
+            # Old format: shared text_color for symbol and price
+            old_text_color = tuple(config.get('text_color', [255, 255, 255]))
+            self.symbol_text_color = old_text_color
+            self.price_text_color = old_text_color
+        
+        price_delta_custom = stocks_custom.get('price_delta', {})
+        if price_delta_custom:
+            self.positive_color = tuple(price_delta_custom.get('positive_color', [0, 255, 0]))
+            self.negative_color = tuple(price_delta_custom.get('negative_color', [255, 0, 0]))
+        else:
+            # Old format fallback
+            self.positive_color = tuple(config.get('positive_color', [0, 255, 0]))
+            self.negative_color = tuple(config.get('negative_color', [255, 0, 0]))
+        
+        # Crypto colors - new format: customization.crypto.symbol/price/price_delta
+        # Old format fallback: customization.crypto.text_color, etc.
+        if crypto_custom.get('symbol') and 'text_color' in crypto_custom['symbol']:
+            # New format: separate colors for symbol and price
+            self.crypto_symbol_text_color = tuple(crypto_custom['symbol'].get('text_color', [255, 215, 0]))
+            self.crypto_price_text_color = tuple(crypto_custom.get('price', {}).get('text_color', [255, 215, 0]))
+        else:
+            # Old format: shared text_color for symbol and price
+            old_crypto_text_color = tuple(crypto_custom.get('text_color', [255, 215, 0]))
+            self.crypto_symbol_text_color = old_crypto_text_color
+            self.crypto_price_text_color = old_crypto_text_color
+        
+        crypto_price_delta_custom = crypto_custom.get('price_delta', {})
+        if crypto_price_delta_custom:
+            self.crypto_positive_color = tuple(crypto_price_delta_custom.get('positive_color', [0, 255, 0]))
+            self.crypto_negative_color = tuple(crypto_price_delta_custom.get('negative_color', [255, 0, 0]))
+        else:
+            # Old format fallback
+            self.crypto_positive_color = tuple(crypto_custom.get('positive_color', [0, 255, 0]))
+            self.crypto_negative_color = tuple(crypto_custom.get('negative_color', [255, 0, 0]))
         
         # Initialize helpers
         self.logo_helper = LogoHelper(display_width, display_height, logger=logger)
@@ -44,14 +81,77 @@ class StockDisplayRenderer:
         # Initialize scroll helper
         self.scroll_helper = ScrollHelper(display_width, display_height, logger)
         
-        # Cache fonts to avoid reloading every time
-        self._cached_fonts = None
+        # Load custom fonts from config
+        # Fonts are under customization.stocks/crypto.symbol/price/price_delta
+        # For backwards compatibility, try to load from customization.fonts first
+        fonts_config = customization.get('fonts', {})
+        if fonts_config:
+            # Old format: fonts at customization.fonts level (shared for stocks and crypto)
+            self.symbol_font = self._load_custom_font_from_element_config(fonts_config.get('symbol', {}))
+            self.price_font = self._load_custom_font_from_element_config(fonts_config.get('price', {}))
+            self.price_delta_font = self._load_custom_font_from_element_config(fonts_config.get('price_delta', {}))
+        else:
+            # New format: fonts at customization.stocks/crypto.symbol/price/price_delta
+            # Use stocks font config (crypto can override later if needed, but currently shares fonts)
+            stocks_custom = customization.get('stocks', {})
+            self.symbol_font = self._load_custom_font_from_element_config(stocks_custom.get('symbol', {}))
+            self.price_font = self._load_custom_font_from_element_config(stocks_custom.get('price', {}))
+            self.price_delta_font = self._load_custom_font_from_element_config(stocks_custom.get('price_delta', {}))
     
-    def _get_fonts(self):
-        """Get cached fonts, loading them only once."""
-        if self._cached_fonts is None:
-            self._cached_fonts = self.text_helper.load_fonts()
-        return self._cached_fonts
+    def _load_custom_font_from_element_config(self, element_config: Dict[str, Any]) -> ImageFont.FreeTypeFont:
+        """
+        Load a custom font from an element configuration dictionary.
+        
+        Args:
+            element_config: Configuration dict for a single element (symbol, price, or price_delta)
+                           containing 'font' and 'font_size' keys
+            
+        Returns:
+            PIL ImageFont object
+        """
+        # Get font name and size, with defaults
+        font_name = element_config.get('font', 'PressStart2P-Regular.ttf')
+        font_size = element_config.get('font_size', 8)
+        
+        # Build font path
+        font_path = os.path.join('assets', 'fonts', font_name)
+        
+        # Try to load the font
+        try:
+            if os.path.exists(font_path):
+                # Try loading as TTF first (works for both TTF and some BDF files with PIL)
+                if font_path.lower().endswith('.ttf'):
+                    font = ImageFont.truetype(font_path, font_size)
+                    self.logger.debug(f"Loaded font: {font_name} at size {font_size}")
+                    return font
+                elif font_path.lower().endswith('.bdf'):
+                    # PIL's ImageFont.truetype() can sometimes handle BDF files
+                    # If it fails, we'll fall through to the default font
+                    try:
+                        font = ImageFont.truetype(font_path, font_size)
+                        self.logger.debug(f"Loaded BDF font: {font_name} at size {font_size}")
+                        return font
+                    except Exception:
+                        self.logger.warning(f"Could not load BDF font {font_name} with PIL, using default")
+                        # Fall through to default
+                else:
+                    self.logger.warning(f"Unknown font file type: {font_name}, using default")
+            else:
+                self.logger.warning(f"Font file not found: {font_path}, using default")
+        except Exception as e:
+            self.logger.error(f"Error loading font {font_name}: {e}, using default")
+        
+        # Fall back to default font
+        default_font_path = os.path.join('assets', 'fonts', 'PressStart2P-Regular.ttf')
+        try:
+            if os.path.exists(default_font_path):
+                return ImageFont.truetype(default_font_path, font_size)
+            else:
+                self.logger.warning("Default font not found, using PIL default")
+                return ImageFont.load_default()
+        except Exception as e:
+            self.logger.error(f"Error loading default font: {e}")
+            return ImageFont.load_default()
     
     def create_stock_display(self, symbol: str, data: Dict[str, Any]) -> Image.Image:
         """Create a display image for a single stock or crypto - matching old stock manager layout exactly."""
@@ -74,13 +174,10 @@ class StockDisplayRenderer:
             logo_y = int((height - logo.height) // 2)
             image.paste(logo, (int(logo_x), int(logo_y)), logo)
         
-        # Load fonts - use the same fonts as old stock manager
-        fonts = self._get_fonts()
-        
-        # Create smaller versions of the fonts for symbol and price (matching old stock manager)
-        symbol_font = fonts.get('score')  # Use regular font for symbol
-        price_font = fonts.get('score')   # Use regular font for price
-        change_font = fonts.get('time')   # Use small font for change
+        # Use custom fonts loaded from config
+        symbol_font = self.symbol_font
+        price_font = self.price_font
+        change_font = self.price_delta_font
         
         # Create text elements
         display_symbol = symbol.replace('-USD', '') if is_crypto else symbol
@@ -116,7 +213,9 @@ class StockDisplayRenderer:
         else:
             change_color = self.negative_color if not is_crypto else self.crypto_negative_color
         
-        text_color = self.text_color if not is_crypto else self.crypto_text_color
+        # Use symbol color for symbol, price color for price
+        symbol_color = self.symbol_text_color if not is_crypto else self.crypto_symbol_text_color
+        price_color = self.price_text_color if not is_crypto else self.crypto_price_text_color
         
         # Calculate text dimensions for proper spacing (matching old stock manager)
         symbol_bbox = draw.textbbox((0, 0), symbol_text, font=symbol_font)
@@ -155,13 +254,13 @@ class StockDisplayRenderer:
         # Draw symbol
         symbol_width = symbol_bbox[2] - symbol_bbox[0]
         symbol_x = column_x - (symbol_width // 2)
-        draw.text((symbol_x, start_y), symbol_text, font=symbol_font, fill=text_color)
+        draw.text((symbol_x, start_y), symbol_text, font=symbol_font, fill=symbol_color)
         
         # Draw price
         price_width = price_bbox[2] - price_bbox[0]
         price_x = column_x - (price_width // 2)
         price_y = start_y + (symbol_bbox[3] - symbol_bbox[1]) + text_gap  # Adjusted gap
-        draw.text((price_x, price_y), price_text, font=price_font, fill=text_color)
+        draw.text((price_x, price_y), price_text, font=price_font, fill=price_color)
         
         # Draw change with color based on value (only if change_text is not empty)
         if change_text:
@@ -192,11 +291,10 @@ class StockDisplayRenderer:
             logo_y = int((int(self.display_height) - logo.height) // 2)
             image.paste(logo, (int(logo_x), int(logo_y)), logo)
         
-        # Load fonts
-        fonts = self._get_fonts()
-        symbol_font = fonts.get('score')
-        price_font = fonts.get('score')
-        change_font = fonts.get('time')
+        # Use custom fonts loaded from config
+        symbol_font = self.symbol_font
+        price_font = self.price_font
+        change_font = self.price_delta_font
         
         # Create text
         display_symbol = symbol.replace('-USD', '') if is_crypto else symbol
@@ -230,7 +328,9 @@ class StockDisplayRenderer:
         else:
             change_color = self.negative_color if not is_crypto else self.crypto_negative_color
         
-        text_color = self.text_color if not is_crypto else self.crypto_text_color
+        # Use symbol color for symbol, price color for price
+        symbol_color = self.symbol_text_color if not is_crypto else self.crypto_symbol_text_color
+        price_color = self.price_text_color if not is_crypto else self.crypto_price_text_color
         
         # Calculate positions
         symbol_bbox = draw.textbbox((0, 0), symbol_text, font=symbol_font)
@@ -248,12 +348,12 @@ class StockDisplayRenderer:
         # Draw symbol
         symbol_width = symbol_bbox[2] - symbol_bbox[0]
         symbol_x = center_x - (symbol_width // 2)
-        draw.text((symbol_x, 5), symbol_text, font=symbol_font, fill=text_color)
+        draw.text((symbol_x, 5), symbol_text, font=symbol_font, fill=symbol_color)
         
         # Draw price
         price_width = price_bbox[2] - price_bbox[0]
         price_x = center_x - (price_width // 2)
-        draw.text((price_x, 15), price_text, font=price_font, fill=text_color)
+        draw.text((price_x, 15), price_text, font=price_font, fill=price_color)
         
         # Draw change (only if change_text is not empty)
         if change_text:
@@ -394,9 +494,8 @@ class StockDisplayRenderer:
         image = Image.new('RGB', (int(self.display_width), int(self.display_height)), (0, 0, 0))
         draw = ImageDraw.Draw(image)
         
-        # Load fonts
-        fonts = self._get_fonts()
-        error_font = fonts.get('score')
+        # Use symbol font for error display
+        error_font = self.symbol_font
         
         # Draw error message
         error_text = "No Data Available"
