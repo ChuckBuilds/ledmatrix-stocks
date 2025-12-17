@@ -111,7 +111,7 @@ class StockDisplayRenderer:
         """
         # Get font name and size, with defaults
         font_name = element_config.get('font', 'PressStart2P-Regular.ttf')
-        font_size = element_config.get('font_size', 8)
+        font_size = int(element_config.get('font_size', 8))  # Ensure integer for PIL
         
         # Build font path
         font_path = os.path.join('assets', 'fonts', font_name)
@@ -240,33 +240,33 @@ class StockDisplayRenderer:
                            (text_gap + change_gap)  # Account for gaps between elements
         
         # Calculate starting y position to center all text
-        start_y = (height - total_text_height) // 2
+        start_y = int((height - total_text_height) // 2)
         
         # Calculate center x position for the column - adjust based on chart toggle
         # Match old stock_manager exactly
         if self.toggle_chart:
             # When chart is enabled, center text more to the left
-            column_x = width // 2.85
+            column_x = int(width / 2.85)
         else:
             # When chart is disabled, position text with more space from logo
-            column_x = width // 2.2
+            column_x = int(width / 2.2)
         
         # Draw symbol
         symbol_width = symbol_bbox[2] - symbol_bbox[0]
-        symbol_x = column_x - (symbol_width // 2)
+        symbol_x = int(column_x - (symbol_width // 2))
         draw.text((symbol_x, start_y), symbol_text, font=symbol_font, fill=symbol_color)
         
         # Draw price
         price_width = price_bbox[2] - price_bbox[0]
-        price_x = column_x - (price_width // 2)
-        price_y = start_y + (symbol_bbox[3] - symbol_bbox[1]) + text_gap  # Adjusted gap
+        price_x = int(column_x - (price_width // 2))
+        price_y = int(start_y + (symbol_bbox[3] - symbol_bbox[1]) + text_gap)  # Adjusted gap
         draw.text((price_x, price_y), price_text, font=price_font, fill=price_color)
         
         # Draw change with color based on value (only if change_text is not empty)
         if change_text:
             change_width = change_bbox[2] - change_bbox[0]
-            change_x = column_x - (change_width // 2)
-            change_y = price_y + (price_bbox[3] - price_bbox[1]) + text_gap  # Adjusted gap
+            change_x = int(column_x - (change_width // 2))
+            change_y = int(price_y + (price_bbox[3] - price_bbox[1]) + text_gap)  # Adjusted gap
             draw.text((change_x, change_y), change_text, font=change_font, fill=change_color)
         
         # Draw mini chart on the right only if toggle_chart is enabled
